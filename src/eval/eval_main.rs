@@ -24,9 +24,8 @@ pub (in crate::eval) fn resolve_value(value: &Rc<Value>, env: &Env) -> Rc<Value>
     let mut shared = Rc::clone(value);
 
     while let Value::Name(name) = &*shared {
-        shared = env.get(name)
-                    .expect(&format!("Unbound value name '{}'", remove_amp!(name))[..])
-                    .clone();
+        shared = Rc::clone(env.get(name)
+                                   .expect(&format!("Unbound value name '{}'", remove_amp!(name))[..]));
     }
 
     return shared;
