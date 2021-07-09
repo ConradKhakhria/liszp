@@ -3,4 +3,4 @@
         xs
         (cons (f (car xs)) (map (cdr xs) f))))
 
-(println (map (1 2 3 4) (lambda i (* i i)))) # == (1 4 9 16)
+(println (map (quote 1 2 3 4) (lambda i (* i i)))) # == (1 4 9 16)
