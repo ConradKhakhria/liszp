@@ -225,13 +225,13 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
 
     let mut plist_iter = parameter_list.iter();
     let k = plist_iter.next().unwrap();
-    let x = if let Value::Bool(b) = **plist_iter.next().unwrap() {
+    let x = if let Value::Bool(b) = *resolve_value(plist_iter.next().unwrap(), env) {
         b
     } else {
         panic!("Function '{}' expected boolean arguments", remove_amp!(op));
     };
 
-    let y = if let Value::Bool(b) = **plist_iter.next().unwrap_or(&Rc::new(Value::Bool(true))) {
+    let y = if let Value::Bool(b) = *resolve_value(plist_iter.next().unwrap_or(&Rc::new(Value::Bool(true))), env) {
         b
     } else {
         panic!("Function '{}' expected boolean arguments", remove_amp!(op));
