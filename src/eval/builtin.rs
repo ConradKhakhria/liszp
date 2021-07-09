@@ -47,13 +47,7 @@ pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name:
         print!("{}", v);
     }
 
-    return Rc::new(Value::Cons {
-        car: Rc::clone(k),
-        cdr: Rc::new(Value::Cons {
-            car: Rc::clone(&v),
-            cdr: Rc::new(Value::Nil)
-        })
-    })
+    return crate::refcount_list![k, &v];
 }
 
 pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
@@ -109,16 +103,12 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
         b
     };
 
-    return Rc::new(Value::Cons {
-        car: Rc::clone(k),
-        cdr: Rc::new(Value::Cons {
-            car: Rc::new(Value::Quote(
-                Rc::new(Value::Cons {
-                    car: Rc::clone(a),
-                    cdr: Rc::clone(cdr)
-                })
-            )),
-            cdr: Rc::new(Value::Nil)
+    let quote = Value::Quote(
+        Rc::new(Value::Cons {
+            car: Rc::clone(a),
+            cdr: Rc::clone(cdr)
         })
-    });
+    );
+
+    return crate::value_list![ &**k, &quote ];
 }
