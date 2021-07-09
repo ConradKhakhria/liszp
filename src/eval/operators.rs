@@ -1,4 +1,4 @@
-use crate::eval::eval_main::resolve_value;
+use crate::eval::eval_main::{ Env, resolve_value };
 use crate::parse::Value;
 use crate::remove_amp;
 
@@ -10,10 +10,10 @@ use rug;
 
 /* Arithmetic */
 
-fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &mut HashMap<String, Rc<Value>>) -> Value {
+fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &Env) -> Value {
     /* Evaluates an arithmetic expression where one or more of the parameters are floats */
 
-    fn make_float(val: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> rug::Float {
+    fn make_float(val: &Rc<Value>, env: &Env) -> rug::Float {
         return match &*resolve_value(val, env) {
             Value::Float(f) => f.clone(),
             Value::Integer(i) => rug::Float::with_val(53, 0) + i, // ugly
@@ -42,10 +42,10 @@ fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &mut HashMa
     };
 }
 
-fn integer_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &mut HashMap<String, Rc<Value>>) -> Value {
+fn integer_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &Env) -> Value {
     /* Evaluates an arithmetic expression consisting of all integers */
 
-    fn make_integer(val: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> rug::Integer {
+    fn make_integer(val: &Rc<Value>, env: &Env) -> rug::Integer {
         return match &*resolve_value(val, env) {
             Value::Integer(i) => i.clone(),
             _ => panic!("This absolutely shouldn't happen")
@@ -73,7 +73,7 @@ fn integer_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &mut Hash
     };
 }
 
-pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc<Value> {
+pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
     /* Evaluates an arithmetic expression */
 
     let mut numbers = LinkedList::new();
@@ -157,7 +157,7 @@ fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
     return Rc::new(Value::Bool(result));
 }
 
-pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc<Value> {
+pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
     /* Compare two numeric values */
 
     let parameter_list: LinkedList<Rc<Value>> = parameters.to_list()
@@ -206,4 +206,48 @@ pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &mut 
             cdr: Value::Nil.refcounted()
         })
     })    
+}
+
+/* Boolean */
+
+pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Boolean logic function (and, or, not, etc) */
+
+    let parameter_list = parameters.to_list()
+                                   .expect("Expected syntax (not <value>)");
+
+    if &op[..] == "not&" && parameter_list.len() != 2 {
+        panic!("Function 'not' expected 1 argument, recieved {}", parameter_list.len() - 2);
+    } else if parameter_list.len() != 3 {
+        panic!("Function '{}' expected 1 argument, recieved {}", remove_amp!(op), parameter_list.len() - 2);
+    }
+
+    let mut plist_iter = parameter_list.iter();
+    let k = plist_iter.next().unwrap();
+    let x = if let Value::Bool(b) = **plist_iter.next().unwrap() {
+        b
+    } else {
+        panic!("Function '{}' expected boolean arguments", remove_amp!(op));
+    };
+
+    let y = if let Value::Bool(b) = **plist_iter.next().unwrap_or(&Rc::new(Value::Bool(true))) {
+        b
+    } else {
+        panic!("Function '{}' expected boolean arguments", remove_amp!(op));
+    };
+
+    let result = match &op[..] {
+        "not&" => !x,
+        "and&" => x && y,
+        "or&"  => x || y,
+        _      => x ^ y     // xor
+    };
+
+    return Rc::new(Value::Cons {
+        car: Rc::clone(k),
+        cdr: Rc::new(Value::Cons {
+            car: Rc::new(Value::Bool(result)),
+            cdr: Rc::new(Value::Nil)
+        })
+    });
 }

@@ -1,5 +1,5 @@
 use crate::parse::Value;
-use crate::eval::{ builtin, operators::{ arithmetic, comparison } };
+use crate::eval::{ builtin, operators::{ arithmetic, boolean, comparison } };
 
 use std::collections::{HashMap, LinkedList};
 use std::rc::Rc;
@@ -173,11 +173,12 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
 
     while let Value::Cons { car: function_value, cdr: args } = &*value {
         match &function_value.name()[..] {
-            "def&"                   => evaluate!(builtin::define_value(args, env)),
-            "print&"|"println&"      => evaluate!(builtin::print_value(args, env, function_value.name())),
-            "if&"                    => evaluate!(builtin::if_expr(args, env)),
-            "no-continuation"        => evaluate!(no_continuation(Rc::clone(args), env)),
-            "+&"|"-&"|"*&"|"/&"|"%&" => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
+            "def&"                     => evaluate!(builtin::define_value(args, env)),
+            "print&"|"println&"        => evaluate!(builtin::print_value(args, env, function_value.name())),
+            "if&"                      => evaluate!(builtin::if_expr(args, env)),
+            "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
+            "+&"|"-&"|"*&"|"/&"|"%&"   => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
+            "not&"|"and&"|"or&"|"xor&" => evaluate!(boolean(function_value.name(), Rc::clone(args), env)),
             "<&"|">&"|"<=&"|">=&"|"==&"|"!=&" => evaluate!(comparison(function_value.name(), Rc::clone(args), env)),
             _ => {}
         }
