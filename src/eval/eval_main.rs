@@ -18,7 +18,7 @@ macro_rules! remove_amp {
 macro_rules! unroll_parameters {
     /* This is not the most efficient code I've ever written - it might need to be scrapped */
 
-    [ $params:expr, $msg:expr, $cont:literal ; $( $x:ident ),+ ] => {
+    { $params:expr, $msg:expr, $cont:literal ; $( $x:ident ),+ } => {
         let parameter_list  = $params.to_list().expect($msg);
         let mut plist_iter  = parameter_list.iter();
         let mut ident_count = 0;
@@ -29,7 +29,7 @@ macro_rules! unroll_parameters {
         )*
 
         if ident_count != parameter_list.len() {
-            panic!("{} ; recieved {} args", $msg, parameter_list.len() - if $cont { 1 } else { 0 });
+            panic!("{}:\nrecieved {} args", $msg, parameter_list.len() - if $cont { 1 } else { 0 });
         }
 
         $(
@@ -171,7 +171,6 @@ fn no_continuation(parameters: Rc<Value>, env: &mut HashMap<String, Rc<Value>>) 
     panic!("Function no-continuation should be supplied with exactly one argument")
 }
 
-
 pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
    /* Evaluates an expression
     *
@@ -200,6 +199,8 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "print&"|"println&"        => evaluate!(builtin::print_value(args, env, function_value.name())),
             "if&"                      => evaluate!(builtin::if_expr(args, env)),
             "cons&"                    => evaluate!(builtin::cons(args, env)),
+            "car&"|"first&"            => evaluate!(builtin::car(args, env, function_value.name())),
+            "cdr&"|"rest&"             => evaluate!(builtin::cdr(args, env, function_value.name())),
             "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
             "+&"|"-&"|"*&"|"/&"|"%&"   => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
             "not&"|"and&"|"or&"|"xor&" => evaluate!(boolean(function_value.name(), Rc::clone(args), env)),
