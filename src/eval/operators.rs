@@ -218,8 +218,9 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
 
     if &op[..] == "not&" && parameter_list.len() != 2 {
         panic!("Function 'not' expected 1 argument, recieved {}", parameter_list.len() - 2);
-    } else if parameter_list.len() != 3 {
-        panic!("Function '{}' expected 1 argument, recieved {}", remove_amp!(op), parameter_list.len() - 2);
+    } else if &op[..] != "not&" && parameter_list.len() != 3 {
+        println!("{}", op);
+        panic!("Function '{}' expected 2 arguments, recieved {}", remove_amp!(op), parameter_list.len() - 2);
     }
 
     let mut plist_iter = parameter_list.iter();
