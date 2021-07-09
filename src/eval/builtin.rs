@@ -60,7 +60,7 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &mut Env) -> Rc<Val
     /* Evaluates an if expression */
 
     let parameter_list = parameters.to_list()
-                                   .expect("Expected syntax (if <cond> <true case> <false case>");
+                                   .expect("Expected syntax (if <cond> <true case> <false case>)");
 
     if parameter_list.len() != 3 {
         panic!("if expression expected 3 arguments, received {}", parameter_list.len());
