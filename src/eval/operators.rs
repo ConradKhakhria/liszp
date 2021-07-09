@@ -160,20 +160,17 @@ fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
 pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
     /* Compare two numeric values */
 
-    let parameter_list: LinkedList<Rc<Value>> = parameters.to_list()
-                                                          .expect(&format!("Expected args in '{}' expression", op)[..]);
+    crate::unroll_parameters!(
+        parameters,
+        &format!("Liszp: expected syntax ({} <value> <value>)", op)[..],
+        true ;
+        k, a, b
+    );
 
-    if parameter_list.len() != 3 {
-        panic!("'{}' expression requires 2 arguments but received {}", op, parameter_list.len() - 1);
-    }
+    let res1 = resolve_value(a, env);
+    let res2 = resolve_value(b, env);
 
-    let mut plist_iter = parameter_list.iter();
-
-    let k = plist_iter.next().unwrap();
-    let a = resolve_value(plist_iter.next().unwrap(), env);
-    let b = resolve_value(plist_iter.next().unwrap(), env);
-
-    let result = match (&*a, &*b) {
+    let result = match (&*res1, &*res2) {
         (Value::Integer(x), Value::Integer(y)) => {
             integer_comparison(op, x.clone(), y.clone())
         },
