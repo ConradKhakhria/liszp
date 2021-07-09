@@ -138,6 +138,52 @@ impl Value {
     }
 }
 
+#[macro_export]
+macro_rules! value_list {
+    [ $( $x:expr ),* ] => {
+        {
+            let mut cons = Rc::new(Value::Nil);
+            let mut expr_list = LinkedList::new();
+
+            $(
+                expr_list.push_front($x);
+            )*
+
+            for ex in expr_list.into_iter() {
+                cons = Rc::new(Value::Cons {
+                    car: Rc::new(ex.clone()),
+                    cdr: cons
+                });
+            }
+
+            cons
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! refcount_list {
+    [ $( $x:expr ),* ] => {
+        {
+            let mut cons = Rc::new(Value::Nil);
+            let mut expr_list = LinkedList::new();
+
+            $(
+                expr_list.push_front($x);
+            )*
+
+            for ex in expr_list.iter() {
+                cons = Rc::new(Value::Cons {
+                    car: Rc::clone(ex),
+                    cdr: cons
+                });
+            }
+
+            cons
+        }
+    };
+}
+
 impl<'a> std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return write!(f, "{}", match self {
@@ -160,7 +206,7 @@ impl<'a> std::fmt::Display for Value {
                 format!("({})", print_list(Rc::new(self.clone())))
             },
             Value::Quote(xs) => {
-                format!("(quote {})", print_list(Rc::clone(xs)))
+                format!("'({})", print_list(Rc::clone(xs)))
             },
             Value::Nil => {
                 "nil".into()
@@ -176,6 +222,11 @@ fn print_list<'a>(xs: Rc<Value>) -> String {
     while let Value::Cons { car, cdr } = &**cursor {
         string += &format!(" {}", *car)[..];
         cursor  = &cdr;
+    }
+
+    match **cursor {
+        Value::Nil => {},
+        _ => string += &format!(" . {}", cursor)
     }
 
     return (&string[1..]).into();
