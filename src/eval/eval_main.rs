@@ -14,6 +14,30 @@ macro_rules! remove_amp {
     };
 }
 
+#[macro_export]
+macro_rules! unroll_parameters {
+    /* This is not the most efficient code I've ever written - it might need to be scrapped */
+
+    [ $params:expr, $msg:literal, $cont:literal ; $( $x:ident ),+ ] => {
+        let parameter_list  = $params.to_list().expect($msg);
+        let mut plist_iter  = parameter_list.iter();
+        let mut ident_count = 0;
+
+        $(
+            let $x;
+            ident_count += 1;
+        )*
+
+        if ident_count != parameter_list.len() {
+            panic!("{} ; recieved {} args", $msg, parameter_list.len() - if $cont { 1 } else { 0 });
+        }
+
+        $(
+            $x = plist_iter.next().unwrap();
+        )*
+    };
+}
+
 pub (in crate::eval) type Env = HashMap<String, Rc<Value>>;
 
 /* Generic helper functions */
