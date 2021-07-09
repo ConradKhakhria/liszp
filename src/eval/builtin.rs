@@ -7,13 +7,12 @@ use std::rc::Rc;
 pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> Rc<Value> {
     /* Adds a value to the global namespace */
 
-    let parameter_list = parameters.to_list()
-                                   .expect("Liszp: Expected def expression with syntax (def <name> <value>)");
-
-    let mut p_iter = parameter_list.iter();
-
-    let name_value = p_iter.next().unwrap();
-    let body_value = p_iter.next().unwrap();
+    crate::unroll_parameters!(
+        parameters,
+        "Liszp: function 'def' expected syntax (def <name> <value>)",
+        false;
+        name_value, body_value
+    );
 
     let name = if let Value::Name(n) = &**name_value {
         n
@@ -29,42 +28,33 @@ pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> R
 pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name: String) -> Rc<Value> {
     /* Prints a value and then returns it */
 
-    let parameter_list = parameters.to_list()
-                                   .expect(&format!("Function {} expected an argument", name)[..]);
+    crate::unroll_parameters!(
+        parameters,
+        &format!("Liszp: function '{}' expected syntax ({} <value>)", name, name)[..],
+        true ;
+        k, v
+    );
 
-    if parameter_list.len() != 2 {
-        panic!("Function '{}' expected 1 argument but received {}", name, parameter_list.len() - 1);
-    }
-
-    let mut plist_iter = parameter_list.iter();
-
-    let k = plist_iter.next().unwrap();
-    let v = resolve_value(plist_iter.next().unwrap(), env);
+    let value = resolve_value(v, env);
 
     if &name[..] == "println&" {
-        println!("{}", v);
+        println!("{}", *value);
     } else {
-        print!("{}", v);
+        print!("{}", *value);
     }
 
-    return crate::refcount_list![k, &v];
+    return crate::refcount_list![k, &value];
 }
 
 pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Evaluates an if expression */
 
-    let parameter_list = parameters.to_list()
-                                   .expect("Expected syntax (if <cond> <true case> <false case>)");
-
-    if parameter_list.len() != 3 {
-        panic!("if expression expected 3 arguments, received {}", parameter_list.len());
-    }
-
-    let mut plist_iter = parameter_list.iter();
-    
-    let c = plist_iter.next().unwrap();
-    let t = plist_iter.next().unwrap();
-    let f = plist_iter.next().unwrap();
+    crate::unroll_parameters!(
+        parameters,
+        "Liszp: function 'if' expected syntax (if <cond> <true case> <false case>)",
+        false ;
+        c, t, f
+    );
 
     let cond = if let Value::Bool(b) = *resolve_value(c, env) {
         b
@@ -84,20 +74,16 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Creates a cons pair */
 
-    let parameter_list = parameters.to_list()
-                                   .expect("Expected syntax (cons <value> <value>)");
+    crate::unroll_parameters!(
+        parameters,
+        "Liszp: expected syntax (cons <value> <value>)",
+        true ;
+        k, a, b
+    );
 
-    if parameter_list.len() != 3 {
-        panic!("Function 'cons' expected 2 arguments, received {}", parameter_list.len() - 1);
-    }
-
-    let mut plist_iter = parameter_list.iter();
-
-    let k = plist_iter.next().unwrap();
-    let a = &resolve_value(plist_iter.next().unwrap(), env);
-    let b = &resolve_value(plist_iter.next().unwrap(), env);
-
-    let cdr = if let Value::Quote(v) = &**b {
+    let resolved = resolve_value(b, env);
+    
+    let cdr = if let Value::Quote(v) = &*resolved {
         &v
     } else {
         b
@@ -105,7 +91,7 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     let quote = Value::Quote(
         Rc::new(Value::Cons {
-            car: Rc::clone(a),
+            car: Rc::clone(&resolve_value(a, env)),
             cdr: Rc::clone(cdr)
         })
     );
