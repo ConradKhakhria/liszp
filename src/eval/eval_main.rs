@@ -176,6 +176,7 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "def&"                     => evaluate!(builtin::define_value(args, env)),
             "print&"|"println&"        => evaluate!(builtin::print_value(args, env, function_value.name())),
             "if&"                      => evaluate!(builtin::if_expr(args, env)),
+            "cons&"                    => evaluate!(builtin::cons(args, env)),
             "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
             "+&"|"-&"|"*&"|"/&"|"%&"   => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
             "not&"|"and&"|"or&"|"xor&" => evaluate!(boolean(function_value.name(), Rc::clone(args), env)),

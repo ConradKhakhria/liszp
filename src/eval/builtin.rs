@@ -56,7 +56,7 @@ pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name:
     })
 }
 
-pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &mut Env) -> Rc<Value> {
+pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Evaluates an if expression */
 
     let parameter_list = parameters.to_list()
@@ -85,4 +85,40 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &mut Env) -> Rc<Val
     };
 }
 
+/* Cons functions */
 
+pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Creates a cons pair */
+
+    let parameter_list = parameters.to_list()
+                                   .expect("Expected syntax (cons <value> <value>)");
+
+    if parameter_list.len() != 3 {
+        panic!("Function 'cons' expected 2 arguments, received {}", parameter_list.len() - 1);
+    }
+
+    let mut plist_iter = parameter_list.iter();
+
+    let k = plist_iter.next().unwrap();
+    let a = &resolve_value(plist_iter.next().unwrap(), env);
+    let b = &resolve_value(plist_iter.next().unwrap(), env);
+
+    let cdr = if let Value::Quote(v) = &**b {
+        &v
+    } else {
+        b
+    };
+
+    return Rc::new(Value::Cons {
+        car: Rc::clone(k),
+        cdr: Rc::new(Value::Cons {
+            car: Rc::new(Value::Quote(
+                Rc::new(Value::Cons {
+                    car: Rc::clone(a),
+                    cdr: Rc::clone(cdr)
+                })
+            )),
+            cdr: Rc::new(Value::Nil)
+        })
+    });
+}
