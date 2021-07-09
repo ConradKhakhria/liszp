@@ -1,15 +1,16 @@
 use crate::parse::Value;
 use crate::eval::eval_main::{Env, resolve_value};
 
+use std::collections::LinkedList;
 use std::rc::Rc;
 
 pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> Rc<Value> {
     /* Adds a value to the global namespace */
 
-    let parameters_list = parameters.to_list()
-                                                .expect("Liszp: Expected def expression with syntax (def <name> <value>)");
+    let parameter_list = parameters.to_list()
+                                   .expect("Liszp: Expected def expression with syntax (def <name> <value>)");
 
-    let mut p_iter = parameters_list.iter();
+    let mut p_iter = parameter_list.iter();
 
     let name_value = p_iter.next().unwrap();
     let body_value = p_iter.next().unwrap();
@@ -29,7 +30,7 @@ pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name:
     /* Prints a value and then returns it */
 
     let parameter_list = parameters.to_list()
-                                                       .expect(&format!("Function {} expected an argument", name)[..]);
+                                   .expect(&format!("Function {} expected an argument", name)[..]);
 
     if parameter_list.len() != 2 {
         panic!("Function '{}' expected 1 argument but received {}", name, parameter_list.len() - 1);
@@ -59,7 +60,7 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &mut Env) -> Rc<Val
     /* Evaluates an if expression */
 
     let parameter_list = parameters.to_list()
-                                                       .expect("Expected syntax (if <cond> <true case> <false case>");
+                                   .expect("Expected syntax (if <cond> <true case> <false case>");
 
     if parameter_list.len() != 3 {
         panic!("if expression expected 3 arguments, received {}", parameter_list.len());
