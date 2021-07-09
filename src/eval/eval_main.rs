@@ -18,7 +18,7 @@ macro_rules! remove_amp {
 macro_rules! unroll_parameters {
     /* This is not the most efficient code I've ever written - it might need to be scrapped */
 
-    [ $params:expr, $msg:literal, $cont:literal ; $( $x:ident ),+ ] => {
+    [ $params:expr, $msg:expr, $cont:literal ; $( $x:ident ),+ ] => {
         let parameter_list  = $params.to_list().expect($msg);
         let mut plist_iter  = parameter_list.iter();
         let mut ident_count = 0;
