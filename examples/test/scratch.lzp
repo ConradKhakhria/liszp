@@ -1,0 +1,9 @@
+(def& x& 6)
+
+(def& square-successor&
+    (lambda& (k n&)
+        (+& (lambda s& (*& k s& s&)) n& 1)))
+
+(square-successor& (lambda& k (println& no-continuation k)) 5)
+
+((lambda (k0 n&) (<& k0 n& 2)) (lambda& k (println& no-continuation k)) 10)
