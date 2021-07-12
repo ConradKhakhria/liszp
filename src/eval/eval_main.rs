@@ -201,6 +201,8 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "cons&"                    => evaluate!(builtin::cons(args, env)),
             "car&"|"first&"            => evaluate!(builtin::car(args, env, function_value.name())),
             "cdr&"|"rest&"             => evaluate!(builtin::cdr(args, env, function_value.name())),
+            "null?&"|"empty?&"|"nil?&" => evaluate!(builtin::is_nil(args, env)),
+            "cons?&"|"pair?&"          => evaluate!(builtin::is_cons(args, env)),
             "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
             "+&"|"-&"|"*&"|"/&"|"%&"   => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
             "not&"|"and&"|"or&"|"xor&" => evaluate!(boolean(function_value.name(), Rc::clone(args), env)),
