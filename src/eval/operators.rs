@@ -2,7 +2,7 @@ use crate::eval::eval_main::{ Env, resolve_value };
 use crate::parse::Value;
 use crate::remove_amp;
 
-use std::collections::{ HashMap, LinkedList };
+use std::collections::LinkedList;
 use std::rc::Rc;
 
 use itertools::Itertools;
