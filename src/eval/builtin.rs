@@ -176,7 +176,7 @@ pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     crate::unroll_parameters! {
         parameters,
-        "Liszp: expected syntax (nil? <value>)",
+        "Liszp: expected syntax (cons? <value>)",
         true ;
         k, v
     };
@@ -185,6 +185,126 @@ pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     let result = Rc::new(Value::Bool(match *resolved {
         Value::Cons {..} => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_int(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Integer */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (int? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Integer(_) => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_float(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Float */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (float? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Float(_) => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_bool(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Bool */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (bool? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Bool(_) => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_string(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::String */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (str? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::String(_) => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Quote */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (quote? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Quote(_) => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_name(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Name */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (name? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Name(_) => true,
         _ => false
     }));
 
