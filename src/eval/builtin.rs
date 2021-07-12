@@ -69,6 +69,41 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
     };
 }
 
+pub (in crate::eval) fn compare_values(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Compares two values of any type */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (equals? <value> <value>)",
+        true ;
+        k, x, y
+    };
+
+    let result = &Rc::new(Value::Bool(
+        resolve_value(x, env).eq(&resolve_value(y, env))
+    ));
+
+    return crate::refcount_list![ k,  result ];
+}
+
+pub (in crate::eval) fn get_length(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Gets the length of a value */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (len <value>)",
+        true ;
+        k, xs
+    };
+
+    let result = &Rc::new(Value::Integer(
+        rug::Integer::from(resolve_value(xs, env).len())
+    ));
+
+    return crate::refcount_list![ k, result ];
+}
+
+
 /* Cons functions */
 
 pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {

@@ -198,6 +198,8 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "def&"                     => evaluate!(builtin::define_value(args, env)),
             "print&"|"println&"        => evaluate!(builtin::print_value(args, env, function_value.name())),
             "if&"                      => evaluate!(builtin::if_expr(args, env)),
+            "equals?&"                 => evaluate!(builtin::compare_values(args, env)),
+            "len&"                     => evaluate!(builtin::get_length(args, env)),
             "cons&"                    => evaluate!(builtin::cons(args, env)),
             "car&"|"first&"            => evaluate!(builtin::car(args, env, function_value.name())),
             "cdr&"|"rest&"             => evaluate!(builtin::cdr(args, env, function_value.name())),
