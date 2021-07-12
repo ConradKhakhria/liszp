@@ -34,7 +34,7 @@ fn main() {
         println!("\n:: values ::\n");
 
         for (i, r) in results.iter().enumerate() {
-            println!("expr {} evaluates to {:?};", i + 1, *r);
+            println!("expr {} evaluates to {};", i + 1, *r);
         }
     }
 
