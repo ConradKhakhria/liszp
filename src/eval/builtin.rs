@@ -103,6 +103,39 @@ pub (in crate::eval) fn get_length(parameters: &Rc<Value>, env: &Env) -> Rc<Valu
     return crate::refcount_list![ k, result ];
 }
 
+pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Quotes a value */
+
+    crate::unroll_parameters!(
+        parameters,
+        "Liszp: expected syntax (quote <value>)",
+        true ;
+        k, x
+    );
+
+    let value = Rc::new(Value::Quote(Rc::clone(&resolve_value(x, env))));
+
+    return crate::refcount_list![ k, &value ];
+}
+
+pub (in crate::eval) fn unquote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Unquotes a value */
+
+    crate::unroll_parameters!(
+        parameters,
+        "Liszp: expected syntax (unquote <value>)",
+        true ;
+        k, x
+    );
+
+    if let Value::Quote(v) = &*resolve_value(x, env) {
+        let cloned = Rc::clone(v);
+
+        return crate::refcount_list![ k, &cloned ];
+    } else {
+        panic!("Liszp: attempt to unquote a value that isn't quoted");
+    }
+}
 
 /* Cons functions */
 
