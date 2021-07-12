@@ -98,3 +98,95 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     return crate::value_list![ &**k, &quote ];
 }
+
+pub (in crate::eval) fn car(parameters: &Rc<Value>, env: &Env, name: String) -> Rc<Value> {
+    /* Takes car of a cons pair */
+
+    crate::unroll_parameters!(
+        parameters,
+        &format!("Liszp: expected syntax ({} <cons pair>)", name)[..],
+        true ;
+        k, x
+    );
+
+    let mut resolved = resolve_value(x, env);
+
+    if let Value::Quote(cons) = &*resolved {
+        resolved = Rc::clone(cons);
+    }
+
+    let car = if let Value::Cons { car, .. } = &*resolved {
+        Rc::clone(car)
+    } else {
+        panic!("Liszp: function {} expected to receive a cons pair", name);
+    };
+
+    return crate::refcount_list![ k, &car ];
+}
+
+pub (in crate::eval) fn cdr(parameters: &Rc<Value>, env: &Env, name: String) -> Rc<Value> {
+    /* Takes cdr of a cons pair */
+
+    crate::unroll_parameters!(
+        parameters,
+        &format!("Liszp: expected syntax ({} <cons pair>)", name)[..],
+        true ;
+        k, x
+    );
+
+    let mut resolved = resolve_value(x, env);
+
+    if let Value::Quote(cons) = &*resolved {
+        resolved = Rc::clone(cons);
+    }
+
+    let cdr = if let Value::Cons { cdr, .. } = &*resolved {
+        Rc::clone(cdr)
+    } else {
+        panic!("Liszp: function {} expected to receive a cons pair", name);
+    };
+
+    return crate::refcount_list![ k, &cdr ];
+}
+
+/* Type checking */
+
+pub (in crate::eval) fn is_nil(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Nil */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (nil? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Nil => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
+
+pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Returns whether the arg is a Value::Nil */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (nil? <value>)",
+        true ;
+        k, v
+    };
+
+    let resolved = resolve_value(v, env);
+
+    let result = Rc::new(Value::Bool(match *resolved {
+        Value::Cons {..} => true,
+        _ => false
+    }));
+
+    return crate::refcount_list![ k, &result ];
+}
