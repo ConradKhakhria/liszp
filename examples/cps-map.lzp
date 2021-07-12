@@ -19,4 +19,4 @@
                         xs&)))
             xs&)))
 
-(map& no-continuation (1 2 3 4) (lambda& (k& i&) (*& k& i& i&))) # == '(1 4 9 16)
+(map& (lambda& mapped& (println& no-continuation mapped&)) (1 2 3 4) (lambda& (k& i&) (*& k& i& i&))) # == '(1 4 9 16)
