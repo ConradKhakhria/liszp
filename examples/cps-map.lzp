@@ -1,0 +1,22 @@
+(def& map&
+    (lambda& (k& xs& f&)
+        (null?&
+            (lambda& null@
+                (if& null@
+                    (k& xs&)
+                    (car&
+                        (lambda& car-xs@
+                            (f&
+                                (lambda& f-car-xs@
+                                    (cdr&
+                                        (lambda& cdr-xs@
+                                            (map&
+                                                (lambda& map-cdr-xs@
+                                                    (cons& k& f-car-xs@ map-cdr-xs@)) 
+                                                cdr-xs@ f&)) 
+                                        xs&)) 
+                                car-xs@)) 
+                        xs&)))
+            xs&)))
+
+(map& no-continuation (1 2 3 4) (lambda& (k& i&) (*& k& i& i&))) # == '(1 4 9 16)
