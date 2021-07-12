@@ -206,6 +206,7 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "int?&"                    => evaluate!(builtin::is_int(args, env)),
             "float?&"                  => evaluate!(builtin::is_float(args, env)),
             "str?&"                    => evaluate!(builtin::is_string(args, env)),
+            "bool?&"                   => evaluate!(builtin::is_bool(args, env)),
             "quote?&"                  => evaluate!(builtin::is_quote(args, env)),
             "name?&"                   => evaluate!(builtin::is_name(args, env)),
             "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
