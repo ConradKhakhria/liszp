@@ -27,7 +27,7 @@ pub enum Value {
 }
 
 impl Value {
-    fn eq(self: &Rc<Value>, other: &Rc<Value>) -> bool {
+    pub fn eq(self: &Rc<Value>, other: &Rc<Value>) -> bool {
         return match (&**self, &**other) {
             (Value::Name(a), Value::Name(b)) => a == b,
             (Value::Integer(a), Value::Integer(b)) => a == b,
@@ -59,42 +59,6 @@ impl Value {
             println!("{:?}", self);
             panic!("Attempt to get length of something that isn't a list");
         }
-    }
-
-    pub fn index(&self, index: usize) -> Rc<Value> {
-        /* Indexes a cons list */
-
-        let mut value  = Rc::new(self.clone());
-        let mut cursor = Rc::clone(&value);
- 
-        for _ in 0..index+1 {
-            if let Value::Cons { car, cdr} = &*cursor {
-                value  = Rc::clone(car);
-                cursor = Rc::clone(cdr);
-            } else {
-                panic!("Liszp internal error: index out of bounds");
-            }
-        }
-
-        return Rc::clone(&value);
-    }
-
-    pub fn is_cons(&self) -> bool {
-        /* is &self a cons? */
-
-        return match self {
-            Value::Cons {..} => true,
-            _ => false
-        };
-    }
-
-    pub fn is_nil(&self) -> bool {
-        /* Is &self a Value::Nil */
-
-        return match self {
-            Value::Nil => true,
-            _ => false
-        };
     }
 
     pub fn to_list(&self) -> Option<LinkedList<Rc<Value>>> {
