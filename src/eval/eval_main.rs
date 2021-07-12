@@ -93,10 +93,10 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
                             temp_list.push_back(Rc::clone(&asv));
                             temp_list
                         } else {
-                            asv.to_list().expect("Expected lambda function to have args")
+                            asv.to_list().expect("Liszp: expected lambda function to have args")
                         }
                     } else {
-                        panic!("Expected lambda function to have args");
+                        panic!("Liszp: expected lambda function to have args");
                     };
 
                     for arg in args.iter() {
@@ -118,7 +118,7 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
         };
     }
 
-    let function_list = function.to_list().expect("Expected lambda expression");
+    let function_list = function.to_list().expect("Liszp: expected lambda expression");
 
     if function_list.len() != 3 {
         panic!("Liszp: lambda expression expected 2 arguments (lambda <args> <body>), received {}", function_list.len());
@@ -130,7 +130,7 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
     let function_args_val = flist_iter.next().unwrap();
     let function_body_val = flist_iter.next().unwrap();
 
-    let supplied_args = args.to_list().expect("Expected function to be called with args");
+    let supplied_args = args.to_list().expect("Liszp: expected function to be called with args");
     let function_args = if let Value::Name(_) = &**function_args_val {
         let mut list = LinkedList::new();
         list.push_back(Rc::clone(function_args_val));
@@ -138,11 +138,11 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
         list
     } else {
         function_args_val.to_list()
-                         .expect(&format!("Function not defined with arguments (received expr {})", function_args_val)[..])
+                         .expect(&format!("Liszp: function not defined with arguments (received expr {})", function_args_val)[..])
     };
 
     if function_args.len() != supplied_args.len() {
-        panic!("Function takes {} arguments but received {}", function_args.len(), supplied_args.len());
+        panic!("Liszp: function takes {} arguments but received {}", function_args.len(), supplied_args.len());
     }
 
     // Apply the arguments
@@ -152,7 +152,7 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
         if let Value::Name(n) = &**name {
             bound_variables_body = rec_bind_var(&bound_variables_body, n.clone(), Rc::clone(val));
         } else {
-            panic!("Expected defined function argument to be variable name");
+            panic!("Liszp: expected argument in function literal to be a variable name");
         }
     }
 
