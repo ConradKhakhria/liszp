@@ -118,7 +118,7 @@ pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     return crate::refcount_list![ k, &value ];
 }
 
-pub (in crate::eval) fn unquote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+pub (in crate::eval) fn eval_quoted(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Unquotes a value */
 
     crate::unroll_parameters!(
@@ -133,7 +133,7 @@ pub (in crate::eval) fn unquote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
         return crate::refcount_list![ k, &cloned ];
     } else {
-        panic!("Liszp: attempt to unquote a value that isn't quoted");
+        return crate::refcount_list![ k, x ];
     }
 }
 
