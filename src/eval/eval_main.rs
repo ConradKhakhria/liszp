@@ -1,7 +1,7 @@
 use crate::parse::Value;
 use crate::eval::{ builtin, operators::{ arithmetic, boolean, comparison } };
 
-use std::collections::{HashMap, LinkedList};
+use std::collections::{ HashMap, LinkedList };
 use std::rc::Rc;
 
 #[macro_export]
@@ -168,7 +168,7 @@ fn no_continuation(parameters: Rc<Value>, env: &mut HashMap<String, Rc<Value>>) 
         }
     }
 
-    panic!("Function no-continuation should be supplied with exactly one argument")
+    panic!("Function no-continuation should be supplied with exactly one argument");
 }
 
 pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
@@ -201,7 +201,7 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "equals?&"                 => evaluate!(builtin::compare_values(args, env)),
             "len&"                     => evaluate!(builtin::get_length(args, env)),
             "quote&"                   => evaluate!(builtin::quote(args, env)),
-            "unquote&"                 => evaluate!(builtin::unquote(args, env)),
+            "eval&"                    => evaluate!(builtin::eval_quoted(args, env)),
             "cons&"                    => evaluate!(builtin::cons(args, env)),
             "car&"|"first&"            => evaluate!(builtin::car(args, env, function_value.name())),
             "cdr&"|"rest&"             => evaluate!(builtin::cdr(args, env, function_value.name())),
