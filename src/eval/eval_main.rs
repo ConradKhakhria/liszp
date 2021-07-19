@@ -186,42 +186,32 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
 
     let mut value = Rc::clone(&supplied);
 
-    macro_rules! evaluate {
-        ($value_to_add:expr) => { {
-            value = $value_to_add;
-            continue;
-        } };
-    }
-
     while let Value::Cons { car: function_value, cdr: args } = &*value {
-        match &function_value.name()[..] {
-            "def&"                     => evaluate!(builtin::define_value(args, env)),
-            "print&"|"println&"        => evaluate!(builtin::print_value(args, env, function_value.name())),
-            "if&"                      => evaluate!(builtin::if_expr(args, env)),
-            "equals?&"                 => evaluate!(builtin::compare_values(args, env)),
-            "len&"                     => evaluate!(builtin::get_length(args, env)),
-            "quote&"                   => evaluate!(builtin::quote(args, env)),
-            "eval&"                    => evaluate!(builtin::eval_quoted(args, env)),
-            "cons&"                    => evaluate!(builtin::cons(args, env)),
-            "car&"|"first&"            => evaluate!(builtin::car(args, env, function_value.name())),
-            "cdr&"|"rest&"             => evaluate!(builtin::cdr(args, env, function_value.name())),
-            "null?&"|"empty?&"|"nil?&" => evaluate!(builtin::is_nil(args, env)),
-            "cons?&"|"pair?&"          => evaluate!(builtin::is_cons(args, env)),
-            "int?&"                    => evaluate!(builtin::is_int(args, env)),
-            "float?&"                  => evaluate!(builtin::is_float(args, env)),
-            "str?&"                    => evaluate!(builtin::is_string(args, env)),
-            "bool?&"                   => evaluate!(builtin::is_bool(args, env)),
-            "quote?&"                  => evaluate!(builtin::is_quote(args, env)),
-            "name?&"                   => evaluate!(builtin::is_name(args, env)),
-            "no-continuation"          => evaluate!(no_continuation(Rc::clone(args), env)),
-            "+&"|"-&"|"*&"|"/&"|"%&"   => evaluate!(arithmetic(function_value.name(), Rc::clone(args), env)),
-            "not&"|"and&"|"or&"|"xor&" => evaluate!(boolean(function_value.name(), Rc::clone(args), env)),
-            "<&"|">&"|"<=&"|">=&"|"==&"|"!=&" => evaluate!(comparison(function_value.name(), Rc::clone(args), env)),
-            _ => {}
-        }
-
-        let function = resolve_value(function_value, env);
-        value = bind_variables(function, args);
+        value = match &function_value.name()[..] {
+            "def&"                            => builtin::define_value(args, env),
+            "print&"|"println&"               => builtin::print_value(args, env, function_value.name()),
+            "if&"                             => builtin::if_expr(args, env),
+            "equals?&"                        => builtin::compare_values(args, env),
+            "len&"                            => builtin::get_length(args, env),
+            "quote&"                          => builtin::quote(args, env),
+            "eval&"                           => builtin::eval_quoted(args, env),
+            "cons&"                           => builtin::cons(args, env),
+            "car&"|"first&"                   => builtin::car(args, env, function_value.name()),
+            "cdr&"|"rest&"                    => builtin::cdr(args, env, function_value.name()),
+            "null?&"|"empty?&"|"nil?&"        => builtin::is_nil(args, env),
+            "cons?&"|"pair?&"                 => builtin::is_cons(args, env),
+            "int?&"                           => builtin::is_int(args, env),
+            "float?&"                         => builtin::is_float(args, env),
+            "str?&"                           => builtin::is_string(args, env),
+            "bool?&"                          => builtin::is_bool(args, env),
+            "quote?&"                         => builtin::is_quote(args, env),
+            "name?&"                          => builtin::is_name(args, env),
+            "no-continuation"                 => no_continuation(Rc::clone(args), env),
+            "+&"|"-&"|"*&"|"/&"|"%&"          => arithmetic(function_value.name(), Rc::clone(args), env),
+            "not&"|"and&"|"or&"|"xor&"        => boolean(function_value.name(), Rc::clone(args), env),
+            "<&"|">&"|"<=&"|">=&"|"==&"|"!=&" => comparison(function_value.name(), Rc::clone(args), env),
+            _                                 => bind_variables(resolve_value(function_value, env), args)
+        };
     }
 
     return value;
