@@ -1,4 +1,4 @@
-use crate::parse::Value;
+use crate::read::Value;
 use crate::eval::{ builtin, operators::{ arithmetic, boolean, comparison } };
 
 use std::collections::{ HashMap, LinkedList };
