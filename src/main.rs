@@ -1,9 +1,8 @@
-mod lexer;
-mod preproc;
-mod parse;
+mod read;
 mod eval;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 fn main() {
     /* Interface */
@@ -18,16 +17,16 @@ fn main() {
 
     /* Read */
 
-    let source = std::fs::read_to_string(filename).unwrap();
-    let exprs = lexer::tokenise(&source, (1, 1));
+    let source = std::fs::read_to_string(filename.clone()).unwrap();
+    let values = read::read(&source, filename);
 
     /* eval */
 
     let mut results = Vec::new();
     let mut globals = HashMap::new();
 
-    for expr in exprs.iter() {
-        results.push(eval::eval(parse::parse(expr), &mut globals));
+    for value in values.iter() {
+        results.push(eval::eval(Rc::clone(value), &mut globals));
     }
 
     if display_evaluated {
