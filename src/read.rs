@@ -207,6 +207,7 @@ enum ValueStack {
 }
 
 fn read_atom(string: String) -> ValueStack {
+    /* Convets the source string of an atomic value into a Value */
 
     let value = match (&string[..], string.chars().next().unwrap()) {
         (_, '0'..='9') => {
@@ -233,7 +234,12 @@ fn read_atom(string: String) -> ValueStack {
 }
 
 fn read_nested_lists(source: &String, filename: String) -> ValueStack {
-
+   /* O(n) nested list parser
+    *
+    * This function converts a source string into a 'ValueStack', which is
+    * either an atomic Value or a LinkedList of ValueStacks. After the entire
+    * source string has been read, the ValueStack can be converted into Values.
+    */
 
     let base_value = ValueStack::List { vals: LinkedList::new(), delim: '?' };
     let mut stack = LinkedList::new();
@@ -327,8 +333,11 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
 }
 
 pub fn read(source: &String, filename: String) -> LinkedList<Rc<Value>> {
+   /* Reads a source string into a linked list of Values */
 
     fn rec_read(stack: &ValueStack) -> Rc<Value> {
+        /* Recursively turns ValueStacks into Values (including LinkedList -> Value::Cons) */
+
         match stack {
             ValueStack::Atom(atom) => Rc::clone(atom),
             ValueStack::List { vals, .. } => {
