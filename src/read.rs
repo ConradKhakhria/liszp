@@ -301,10 +301,14 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
                 };
 
                 if first_char != expected {
-                    panic!(
-                        "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
-                        ldelim, expected, first_char
-                    );
+                    if stack.len() == 0 {
+                        panic!("Liszp: unexpected closing bracket '{}'", first_char);
+                    } else {
+                        panic!(
+                            "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
+                            ldelim, expected, first_char
+                        );
+                    }
                 }
 
                 if let ValueStack::List { vals, .. } = stack.back_mut().expect(&rnl_err(2)[..]) {
