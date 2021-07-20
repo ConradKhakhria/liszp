@@ -272,6 +272,7 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
 
         match first_char {
             ' '  => column_number += 1,
+
             '\n' => {
                 column_number = 1;
                 line_number  += 1;
