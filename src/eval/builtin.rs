@@ -11,7 +11,7 @@ pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> R
         parameters,
         "Liszp: function 'def' expected syntax (def <name> <value>)",
         false;
-        name_value, body_value
+        k, name_value, body_value
     );
 
     let name = if let Value::Name(n) = &**name_value {
@@ -22,7 +22,9 @@ pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> R
 
     env.insert(name.clone(), Rc::clone(body_value));
 
-    return Value::Nil.refcounted();
+    let rc_nil = Value::Nil.refcounted();
+
+    return crate::refcount_list![ k, &rc_nil];
 }
 
 pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name: String) -> Rc<Value> {
