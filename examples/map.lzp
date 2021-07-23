@@ -1,0 +1,6 @@
+(def map (lambda (xs f)
+    (if (null? xs)
+        xs
+        (cons (f (car xs)) (map (cdr xs ) f)))))
+
+(println (map (cons 1 (cons 2 (cons 3 (cons 4 nil)))) (lambda (x) (* x x))))
