@@ -46,7 +46,7 @@ impl Value {
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
-        let mut cursor = &Rc::new(self.clone());
+        let mut cursor = &self.clone().refcounted();
         let mut length = -1;
 
         while let Value::Cons { cdr, .. } = &**cursor {
@@ -95,10 +95,10 @@ impl Value {
         };
     }
 
-    pub fn refcounted(&self) -> Rc<Value> {
+    pub fn refcounted(self) -> Rc<Value> {
         /* Value -> Rc<Value> */
     
-        return Rc::new(self.clone());
+        return Rc::new(self);
     }
 
     fn print_list<'a>(xs: Rc<Value>) -> String {
@@ -123,7 +123,7 @@ impl Value {
 macro_rules! value_list {
     [ $( $x:expr ),* ] => {
         {
-            let mut cons = Rc::new(Value::Nil);
+            let mut cons = Value::Nil.refcounted();
             let mut expr_list = LinkedList::new();
 
             $(
@@ -132,7 +132,7 @@ macro_rules! value_list {
 
             for ex in expr_list.into_iter() {
                 cons = Rc::new(Value::Cons {
-                    car: Rc::new(ex.clone()),
+                    car: ex.clone().refcounted(),
                     cdr: cons
                 });
             }
@@ -146,7 +146,7 @@ macro_rules! value_list {
 macro_rules! refcount_list {
     [ $( $x:expr ),* ] => {
         {
-            let mut cons = Rc::new(Value::Nil);
+            let mut cons = Value::Nil.refcounted();
             let mut expr_list = LinkedList::new();
 
             $(
@@ -184,7 +184,7 @@ impl<'a> std::fmt::Display for Value {
                 format!("{}", b)
             },
             Value::Cons { .. } => {
-                format!("({})", Value::print_list(Rc::new(self.clone())))
+                format!("({})", Value::print_list(self.clone().refcounted()))
             },
             Value::Quote(xs) => {
                 format!("'({})", Value::print_list(Rc::clone(xs)))
@@ -230,7 +230,7 @@ fn read_atom(string: String) -> ValueStack {
         _ => Value::Name(string)
     };
 
-    return ValueStack::Atom(Rc::new(value));
+    return ValueStack::Atom(value.refcounted());
 }
 
 fn read_nested_lists(source: &String, filename: String) -> ValueStack {
@@ -346,7 +346,7 @@ pub fn read(source: &String, filename: String) -> LinkedList<Rc<Value>> {
         match stack {
             ValueStack::Atom(atom) => Rc::clone(atom),
             ValueStack::List { vals, .. } => {
-                let mut list = Rc::new(Value::Nil);
+                let mut list = Value::Nil.refcounted();
 
                 for val in vals.iter().rev() {
                     list = Rc::new(Value::Cons {
