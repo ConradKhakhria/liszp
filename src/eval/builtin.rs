@@ -219,6 +219,19 @@ pub (in crate::eval) fn cdr(parameters: &Rc<Value>, env: &Env, name: String) -> 
     return crate::refcount_list![ k, &cdr ];
 }
 
+pub (in crate::eval) fn panic(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
+    /* Panics with an error message */
+
+    crate::unroll_parameters! {
+        parameters,
+        "Liszp: expected syntax (panic <msg>)",
+        true ;
+        k, m
+    };
+
+    panic!("{}", resolve_value(m, env));
+}
+
 /* Type checking */
 
 pub (in crate::eval) fn is_nil(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {

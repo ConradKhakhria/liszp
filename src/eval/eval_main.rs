@@ -196,6 +196,7 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "cons&"                           => builtin::cons(args, env),
             "car&"|"first&"                   => builtin::car(args, env, function_value.name()),
             "cdr&"|"rest&"                    => builtin::cdr(args, env, function_value.name()),
+            "panic&"                          => builtin::panic(args, env),
             "null?&"|"empty?&"|"nil?&"        => builtin::is_nil(args, env),
             "cons?&"|"pair?&"                 => builtin::is_cons(args, env),
             "int?&"                           => builtin::is_int(args, env),
