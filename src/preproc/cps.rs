@@ -87,7 +87,7 @@ pub fn move_ifs(expr: Rc<Value>) -> Rc<Value> {
         let fbranch = move_ifs(replace(&expr, if_expr, fcase));
 
         return refcount_list![
-            Rc::new(Value::Name("if&".into())),
+            Value::Name("if&".into()).refcounted(),
             cond,
             tbranch,
             fbranch
@@ -113,17 +113,17 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 };
 
                 let args = Rc::new(Value::Cons {
-                    car: Rc::new(Value::Name("k@@".into())),
+                    car: Value::Name("k@@".into()).refcounted(),
                     cdr: Rc::clone(args)
                 });
 
                 let body = if let Value::Cons { .. } = &**body {
                     convert(
                         Rc::clone(body),
-                        Some(Rc::new(Value::Name("k@@".into())))
+                        Some(Value::Name("k@@".into()).refcounted())
                     )
                 } else {
-                    refcount_list![ Rc::new(Value::Name("k@@".into())), Rc::clone(body) ]
+                    refcount_list![ Value::Name("k@@".into()).refcounted(), Rc::clone(body) ]
                 };
 
                 *current = refcount_list![ lambda_kwd, &args, &body ];
@@ -131,11 +131,11 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
 
             "quote&" => {
                 vals.push_front((Rc::clone(current), vals.len() + 1));
-                *current = Rc::new(Value::Name(format!("k{}@@", vals.len())));
+                *current = Value::Name(format!("k{}@@", vals.len())).refcounted();
             },
 
             _ => {
-                let mut new_cons_list = Rc::new(Value::Nil);
+                let mut new_cons_list = Value::Nil.refcounted();
                 let mut list = (**current).to_list()
                                           .expect("Liszp: internal error in dfs_value_collect() :: 2");
         
@@ -151,7 +151,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 }
         
                 vals.push_front((Rc::clone(&new_cons_list), vals.len() + 1));
-                *current = Rc::new(Value::Name(format!("k{}@@", vals.len())));
+                *current = Value::Name(format!("k{}@@", vals.len())).refcounted();
             }
         }
     }
@@ -197,7 +197,7 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
 
     let mut layered = false;
     let mut converted_expression = main_continuation
-                            .unwrap_or(Rc::new(Value::Name("no-continuation".into())));
+                            .unwrap_or(Value::Name("no-continuation".into()).refcounted());
 
     for (expr, cont_num) in vals.iter() {
         if let Value::Cons { car, cdr } = &**expr {

@@ -115,7 +115,7 @@ pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
         k, x
     );
 
-    let value = Rc::new(Value::Quote(Rc::clone(&resolve_value(x, env))));
+    let value = Value::Quote(Rc::clone(&resolve_value(x, env))).refcounted();
 
     return crate::refcount_list![ k, &value ];
 }

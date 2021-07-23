@@ -7,7 +7,7 @@ pub (in crate::preproc) fn format_names(value: Rc<Value>) -> Rc<Value> {
 
     return match &*value {
         Value::Name(name) => {
-            Rc::new(Value::Name(format!("{}&", name)))
+            Value::Name(format!("{}&", name)).refcounted()
         },
 
         Value::Cons { car, cdr } => {
