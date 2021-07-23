@@ -69,12 +69,12 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
     * its Rc<Value> from 'args'.
     */
 
-    fn rec_bind_var(expr: &Rc<Value>, name: String, value: Rc<Value>) -> Rc<Value> {
+    fn rec_bind_var(expr: &Rc<Value>, name: &String, value: Rc<Value>) -> Rc<Value> {
         /* Recursively replaces instances of Rc<Value::Name(name)> with value */
 
         match &**expr {
             Value::Name(string) => {
-                return if *string == name {
+                return if *string == *name {
                     value
                 } else {
                     Rc::clone(expr)
@@ -109,12 +109,12 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
                 }
 
                 return Rc::new(Value::Cons {
-                    car: rec_bind_var(&car, name.clone(), Rc::clone(&value)),
-                    cdr: rec_bind_var(&cdr, name, Rc::clone(&value))
+                    car: rec_bind_var(&car, &name, Rc::clone(&value)),
+                    cdr: rec_bind_var(&cdr, &name, Rc::clone(&value))
                 });
             },
 
-            _ => return expr.clone()
+            _ => return Rc::clone(expr)
         };
     }
 
@@ -146,11 +146,11 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
     }
 
     // Apply the arguments
-    let mut bound_variables_body = (**function_body_val).clone().refcounted();
+    let mut bound_variables_body = Rc::clone(function_body_val);
 
     for (name, val) in function_args.iter().zip(supplied_args.iter()) {
         if let Value::Name(n) = &**name {
-            bound_variables_body = rec_bind_var(&bound_variables_body, n.clone(), Rc::clone(val));
+            bound_variables_body = rec_bind_var(&bound_variables_body, n, Rc::clone(val));
         } else {
             panic!("Liszp: expected argument in function literal to be a variable name");
         }
