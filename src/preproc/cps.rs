@@ -16,6 +16,7 @@ macro_rules! cursor_next {
     }
 }
 
+#[allow(unused_assignments)]
 fn find_if(expr: &Rc<Value>) -> Option<(&Value, Rc<Value>, Rc<Value>, Rc<Value>)> {
     /* Attempts to find an if expression and return its constituent parts */
 
@@ -151,6 +152,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
     }
 }
 
+#[allow(unused_assignments)]
 pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<Rc<Value>>) -> Rc<Value> {
     /* Converts a lambda expression to continuation-passing style */
 
