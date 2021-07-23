@@ -1,7 +1,8 @@
 mod read;
 mod eval;
+mod preproc;
 
-use std::collections::HashMap;
+use std::collections::{ HashMap, LinkedList };
 use std::rc::Rc;
 
 fn main() {
@@ -18,7 +19,10 @@ fn main() {
     /* Read */
 
     let source = std::fs::read_to_string(filename.clone()).unwrap();
-    let values = read::read(&source, filename);
+    let values: LinkedList<Rc<read::Value>> = read::read(&source, filename)
+                                                .iter()
+                                                .map(|v| preproc::preprocess(Rc::clone(v)))
+                                                .collect();
 
     /* eval */
 
