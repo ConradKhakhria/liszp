@@ -271,6 +271,8 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
         let first_char = expr_str.chars().next().unwrap();
 
         match first_char {
+            '#' => {},
+
             ' '  => column_number += 1,
 
             '\n' => {
