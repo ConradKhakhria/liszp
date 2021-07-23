@@ -1,5 +1,6 @@
 use crate::eval::eval_main::{ Env, resolve_value };
 use crate::read::Value;
+use crate::refcount_list;
 use crate::remove_amp;
 
 use std::collections::LinkedList;
@@ -116,13 +117,7 @@ pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env)
         integer_arithmetic(op, numbers, env)
     };
 
-    return Rc::new(Value::Cons {
-        car: continuation,
-        cdr: Rc::new(Value::Cons {
-            car: result.refcounted(),
-            cdr: Value::Nil.refcounted()
-        })
-    });
+    return refcount_list![ continuation, result.refcounted() ];
 }
 
 /* Comparison */
@@ -196,13 +191,7 @@ pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env)
         _ => panic!("Expected numeric arguments for '{}' function", remove_amp!(op))
     };
 
-    return Rc::new(Value::Cons {
-        car: Rc::clone(k),
-        cdr: Rc::new(Value::Cons {
-            car: result,
-            cdr: Value::Nil.refcounted()
-        })
-    })    
+    return refcount_list![ Rc::clone(k), result ];
 }
 
 /* Boolean */
@@ -241,11 +230,5 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
         _      => x ^ y     // xor
     };
 
-    return Rc::new(Value::Cons {
-        car: Rc::clone(k),
-        cdr: Rc::new(Value::Cons {
-            car: Value::Bool(result).refcounted(),
-            cdr: Value::Nil.refcounted()
-        })
-    });
+    return refcount_list![ Rc::clone(k), Value::Bool(result).refcounted() ];
 }
