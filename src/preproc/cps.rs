@@ -129,6 +129,11 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 *current = refcount_list![ lambda_kwd, &args, &body ];
             },
 
+            "quote&" => {
+                vals.push_front((Rc::clone(current), vals.len() + 1));
+                *current = Rc::new(Value::Name(format!("k{}@@", vals.len())));
+            },
+
             _ => {
                 let mut new_cons_list = Rc::new(Value::Nil);
                 let mut list = (**current).to_list()
