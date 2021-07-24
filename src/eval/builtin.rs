@@ -226,7 +226,7 @@ pub (in crate::eval) fn panic(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
         parameters,
         "Liszp: expected syntax (panic <msg>)",
         true ;
-        k, m
+        _k, m
     };
 
     panic!("{}", resolve_value(m, env));
