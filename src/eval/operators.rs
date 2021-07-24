@@ -11,29 +11,39 @@ use rug;
 
 /* Arithmetic */
 
-fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &Env) -> Value {
+fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>) -> Value {
     /* Evaluates an arithmetic expression where one or more of the parameters are floats */
 
-    fn make_float(val: &Rc<Value>, env: &Env) -> rug::Float {
-        return match &*resolve_value(val, env) {
-            Value::Float(f) => f.clone(),
-            Value::Integer(i) => rug::Float::with_val(53, 0) + i, // ugly
-            _ => panic!("This shouldn't happen ever")
-        };
-    }
-
-    let mut result = make_float(numbers.front().unwrap(), env);
+    let mut result = match &**numbers.front().unwrap() {
+        Value::Float(f) => f.clone(),
+        Value::Integer(i) => rug::Float::with_val(53, i),
+        _ => panic!("This really shouldn't happen")
+    };
 
     for n in numbers.iter().dropping(1) {
-        let num = make_float(n, env);
+        match &**n {
+            Value::Float(f) => {
+                match &op[..] {
+                    "+&" => result += f,
+                    "-&" => result -= f,
+                    "*&" => result *= f,
+                    "/&" => result /= f,
+                    _    => result %= f
+                }
+            },
 
-        match &op[..] {
-            "+&" => result += num,
-            "-&" => result -= num,
-            "*&" => result *= num,
-            "/&" => result /= num,
-            _    => result %= num
-        }
+            Value::Integer(i) => {
+                match &op[..] {
+                    "+&" => result += i,
+                    "-&" => result -= i,
+                    "*&" => result *= i,
+                    "/&" => result /= i,
+                    _    => panic!("Cannot take modulo of a float by an integer")
+                }
+            },
+
+            _ => panic!("This shouldn't happen ever")
+        };
     }
 
     return if &op[..] == "-&" && numbers.len() == 1 {
@@ -43,20 +53,22 @@ fn float_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &Env) -> Va
     };
 }
 
-fn integer_arithmetic(op: String, numbers: LinkedList<Rc<Value>>, env: &Env) -> Value {
+fn integer_arithmetic(op: String, numbers: LinkedList<Rc<Value>>) -> Value {
     /* Evaluates an arithmetic expression consisting of all integers */
 
-    fn make_integer(val: &Rc<Value>, env: &Env) -> rug::Integer {
-        return match &*resolve_value(val, env) {
-            Value::Integer(i) => i.clone(),
-            _ => panic!("This absolutely shouldn't happen")
+    macro_rules! get_integer {
+        ( $x:expr ) => {
+            match &**$x {
+                Value::Integer(i) => i,
+                _ => panic!("This absolutely shouldn't happen")
+            }
         };
     }
 
-    let mut result = make_integer(numbers.front().unwrap(), env);
+    let mut result = get_integer!(numbers.front().unwrap()).clone();
 
     for n in numbers.iter().dropping(1) {
-        let num = make_integer(n, env);
+        let num = get_integer!(n);
 
         match &op[..] {
             "+&" => result += num,
@@ -112,9 +124,9 @@ pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env)
     }
 
     let result = if floats {
-        float_arithmetic(op, numbers, env)
+        float_arithmetic(op, numbers)
     } else {
-        integer_arithmetic(op, numbers, env)
+        integer_arithmetic(op, numbers)
     };
 
     return refcount_list![ continuation, result.refcounted() ];
