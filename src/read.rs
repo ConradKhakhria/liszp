@@ -249,7 +249,19 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
     let mut line_number = 0;
     let mut column_number = 0;
 
-    let rnl_err = |i| format!("Liszp: internal error in read_nested_lists() :: {}", i);
+    let rnl_err = |i| format!("internal error in read_nested_lists() :: {}", i);
+
+    macro_rules! error {
+        ($msg:literal, $( $binding:expr ),*) => {
+            panic!(
+                "Liszp: syntax error in {}:{}:{}\n{}",
+                filename,
+                line_number,
+                column_number,
+                format!($msg, $($binding,)*)
+            )
+        };
+    }
 
     lazy_static! {
         static ref REGEX: Regex = Regex::new(concat!(
@@ -293,7 +305,7 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
             ')'|'}'|']' => {
                 let (lvals, ldelim) = match stack.pop_back().expect(&rnl_err(1)[..]) {
                     ValueStack::List { vals, delim } => (vals, delim),
-                    ValueStack::Atom(_) => panic!("{}", rnl_err(3))
+                    ValueStack::Atom(_) => error!("{}", rnl_err(3))
                 };
 
                 let expected = match ldelim {
@@ -304,9 +316,9 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
 
                 if first_char != expected {
                     if stack.len() == 0 {
-                        panic!("Liszp: unexpected closing bracket '{}'", first_char);
+                        error!("unexpected closing bracket '{}'", first_char);
                     } else {
-                        panic!(
+                        error!(
                             "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
                             ldelim, expected, first_char
                         );
