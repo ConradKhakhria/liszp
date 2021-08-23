@@ -58,7 +58,7 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
         c, t, f
     );
 
-    let cond = if let Value::Bool(b) = *resolve_value(c, env) {
+    let cond = if let Value::Bool(b) = **resolve_value(c, env) {
         b
     } else {
         panic!("Expected boolean condition in if expr");
@@ -130,7 +130,7 @@ pub (in crate::eval) fn eval_quoted(parameters: &Rc<Value>, env: &Env) -> Rc<Val
         k, x
     );
 
-    if let Value::Quote(v) = &*resolve_value(x, env) {
+    if let Value::Quote(v) = &**resolve_value(x, env) {
         let cloned = Rc::clone(v);
 
         return crate::refcount_list![ k, &cloned ];
@@ -153,7 +153,7 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     let resolved = resolve_value(b, env);
     
-    let cdr = if let Value::Quote(v) = &*resolved {
+    let cdr = if let Value::Quote(v) = &**resolved {
         &v
     } else {
         b
@@ -181,11 +181,11 @@ pub (in crate::eval) fn car(parameters: &Rc<Value>, env: &Env, name: String) -> 
 
     let mut resolved = resolve_value(x, env);
 
-    if let Value::Quote(cons) = &*resolved {
-        resolved = Rc::clone(cons);
+    if let Value::Quote(cons) = &**resolved {
+        resolved = cons;
     }
 
-    let car = if let Value::Cons { car, .. } = &*resolved {
+    let car = if let Value::Cons { car, .. } = &**resolved {
         Rc::clone(car)
     } else {
         panic!("Liszp: function {} expected to receive a cons pair", name);
@@ -206,11 +206,11 @@ pub (in crate::eval) fn cdr(parameters: &Rc<Value>, env: &Env, name: String) -> 
 
     let mut resolved = resolve_value(x, env);
 
-    if let Value::Quote(cons) = &*resolved {
-        resolved = Rc::clone(cons);
+    if let Value::Quote(cons) = &**resolved {
+        resolved = cons;
     }
 
-    let cdr = if let Value::Cons { cdr, .. } = &*resolved {
+    let cdr = if let Value::Cons { cdr, .. } = &**resolved {
         Rc::clone(cdr)
     } else {
         panic!("Liszp: function {} expected to receive a cons pair", name);
@@ -246,7 +246,7 @@ pub (in crate::eval) fn is_nil(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Nil => true,
         _ => false
     }));
@@ -266,7 +266,7 @@ pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Cons {..} => true,
         _ => false
     }));
@@ -286,7 +286,7 @@ pub (in crate::eval) fn is_int(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Integer(_) => true,
         _ => false
     }));
@@ -306,7 +306,7 @@ pub (in crate::eval) fn is_float(parameters: &Rc<Value>, env: &Env) -> Rc<Value>
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Float(_) => true,
         _ => false
     }));
@@ -326,7 +326,7 @@ pub (in crate::eval) fn is_bool(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Bool(_) => true,
         _ => false
     }));
@@ -346,7 +346,7 @@ pub (in crate::eval) fn is_string(parameters: &Rc<Value>, env: &Env) -> Rc<Value
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::String(_) => true,
         _ => false
     }));
@@ -366,7 +366,7 @@ pub (in crate::eval) fn is_quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value>
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Quote(_) => true,
         _ => false
     }));
@@ -386,7 +386,7 @@ pub (in crate::eval) fn is_name(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     let resolved = resolve_value(v, env);
 
-    let result = Rc::new(Value::Bool(match *resolved {
+    let result = Rc::new(Value::Bool(match **resolved {
         Value::Name(_) => true,
         _ => false
     }));
