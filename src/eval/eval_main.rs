@@ -40,20 +40,20 @@ pub (in crate::eval) type Env = HashMap<String, Rc<Value>>;
 
 /* Generic helper functions */
 
-pub (in crate::eval) fn resolve_value(value: &Rc<Value>, env: &Env) -> Rc<Value> {
+pub (in crate::eval) fn resolve_value<'a>(value: &'a Rc<Value>, env: &'a Env) -> &'a Rc<Value> {
     /* If value is a Value::Name, it is reduced to the non-name value */
 
-    let mut shared = Rc::clone(value);
-
-    while let Value::Name(name) = &*shared {
-        shared = Rc::clone(env.get(name)
-                                   .expect(&format!("Unbound value name '{}'", remove_amp!(name))[..]));
+    if let Value::Name(name) = &**value {
+        return env.get(name).expect(&format!("Unbound value name '{}'", remove_amp!(name))[..]);
+    } else {
+        return value;
     }
-
-    return shared;
 }
 
-fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
+// make the value parameter of rec_bind_var a reference
+// and use unroll_parameters! {}
+
+fn bind_variables(function: &Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
    /* Binds the variables in 'args' to a function
     *
     * arguments
@@ -116,17 +116,12 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
         };
     }
 
-    let function_list = function.to_list().expect("Liszp: expected lambda expression");
-
-    if function_list.len() != 3 {
-        panic!("Liszp: lambda expression expected 2 arguments (lambda <args> <body>), received {}", function_list.len());
-    }
-
-    let mut flist_iter = function_list.iter();
-
-    flist_iter.next(); // Lambda keyword
-    let function_args_val = flist_iter.next().unwrap();
-    let function_body_val = flist_iter.next().unwrap();
+    crate::unroll_parameters! {
+        function,
+        "Liszp: function expected syntax (lambda <args> <body>)",
+        false;
+        _lambda_kwd, function_args_val, function_body_val
+    };
 
     let supplied_args = args.to_list().expect("Liszp: expected function to be called with args");
     let function_args = if let Value::Name(_) = &**function_args_val {
@@ -157,12 +152,12 @@ fn bind_variables(function: Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
     return bound_variables_body;
 }
 
-fn no_continuation(parameters: Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc<Value> {
+fn no_continuation(args: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc<Value> {
     /* Ends an expression's evaluation */
 
-    if let Value::Cons { car, cdr } = &*parameters {
+    if let Value::Cons { car, cdr } = &**args {
         if let Value::Nil = **cdr {
-            return resolve_value(car, env);
+            return Rc::clone(resolve_value(car, env));
         }
     }
 
@@ -205,7 +200,7 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
             "bool?&"                          => builtin::is_bool(args, env),
             "quote?&"                         => builtin::is_quote(args, env),
             "name?&"                          => builtin::is_name(args, env),
-            "no-continuation"                 => no_continuation(Rc::clone(args), env),
+            "no-continuation"                 => no_continuation(args, env),
             "+&"|"-&"|"*&"|"/&"|"%&"          => arithmetic(function_value.name(), Rc::clone(args), env),
             "not&"|"and&"|"or&"|"xor&"        => boolean(function_value.name(), Rc::clone(args), env),
             "<&"|">&"|"<=&"|">=&"|"==&"|"!=&" => comparison(function_value.name(), Rc::clone(args), env),
