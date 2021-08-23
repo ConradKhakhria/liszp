@@ -41,7 +41,7 @@ fn float_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
             for n in numbers.iter().dropping(1) {
                 match &***n {
                     Value::Float(f) => result %= f,
-                    Value::Integer(i) => panic!("cannot take integer modulo of float"),
+                    Value::Integer(_) => panic!("cannot take integer modulo of float"),
                     _ => panic!("This should never happen")
                 }
             }
