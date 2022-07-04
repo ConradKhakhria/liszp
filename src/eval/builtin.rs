@@ -66,11 +66,13 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
         panic!("Expected boolean condition in if expr");
     };
 
-    return if cond {
-        Rc::clone(t)
-    } else {
-        Rc::clone(f)
-    };
+    Rc::clone(
+        if cond {
+            t
+        } else {
+            f
+        }
+    )
 }
 
 
