@@ -5,119 +5,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use rug;
 
-#[derive(Clone, Debug)]
-pub enum Value {
-    Name(String),
-
-    Integer(rug::Integer),
-
-    Float(rug::Float),
-
-    String(String),
-
-    Bool(bool),
-
-    Cons {
-        car: Rc<Value>,
-        cdr: Rc<Value>
-    },
-
-    Quote(Rc<Value>), // Value::Cons
-
-    Nil
-}
-
-impl Value {
-    pub fn eq(self: &Rc<Value>, other: &Rc<Value>) -> bool {
-        return match (&**self, &**other) {
-            (Value::Name(a), Value::Name(b)) => a == b,
-            (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Bool(a), Value::Bool(b)) => a == b,
-            (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
-                a.eq(&b) && x.eq(&y)
-            },
-            (Value::Quote(xs), Value::Quote(ys)) => xs.eq(&ys),
-            (Value::Nil, Value::Nil) => true,
-            _ => false
-        };
-    }
-
-    pub fn len(&self) -> i64 {
-        /* Gets the length of a cons list */
-
-        let mut cursor = &self.clone().rc();
-        let mut length = -1;
-
-        while let Value::Cons { cdr, .. } = &**cursor {
-            cursor  = &cdr; // ew
-            length += 1
-        }
-
-        if length > -1 {
-            return length + 1;
-        } else {
-            panic!("Attempt to get length of something that isn't a list");
-        }
-    }
-
-    pub fn to_list(&self) -> Option<LinkedList<Rc<Value>>> {
-        /* Converts a cons list to a std::collections::LinkedList<SharedVal> */
-
-        if let Value::Nil = self {
-            return Some(LinkedList::new());
-        }
-
-        let mut cursor = self;
-        let mut count = 0;
-        let mut list = LinkedList::new();
-
-        while let Value::Cons { car, cdr } = cursor {
-            list.push_back(Rc::clone(car));
-            cursor = &cdr;
-
-            count += 1;
-        }
-
-        return if count == 0 {
-            None
-        } else {
-            Some(list)
-        };
-    }
-
-    pub fn name(&self) -> String {
-        /* if self = Value::Name(n) then n else String::new() */
-
-        return match self {
-            Value::Name(n) => n.clone(),
-            _ => String::new()
-        };
-    }
-
-    pub fn rc(self) -> Rc<Value> {
-        /* Value -> Rc<Value> */
-    
-        return Rc::new(self);
-    }
-
-    fn print_list<'a>(xs: Rc<Value>) -> String {
-        let mut string = String::new();
-        let mut cursor = &xs;
-
-        while let Value::Cons { car, cdr } = &**cursor {
-            string += &format!(" {}", *car)[..];
-            cursor  = &cdr;
-        }
-
-        match **cursor {
-            Value::Nil => {},
-            _ => string += &format!(" . {}", cursor)
-        }
-
-        return (&string[1..]).into();
-    }
-}
 
 #[macro_export]
 macro_rules! value_list {
@@ -165,6 +52,128 @@ macro_rules! refcount_list {
     };
 }
 
+
+#[derive(Clone, Debug)]
+pub enum Value {
+    Name(String),
+
+    Integer(rug::Integer),
+
+    Float(rug::Float),
+
+    String(String),
+
+    Bool(bool),
+
+    Cons {
+        car: Rc<Value>,
+        cdr: Rc<Value>
+    },
+
+    Quote(Rc<Value>), // Value::Cons
+
+    Nil
+}
+
+
+impl Value {
+    pub fn eq(self: &Rc<Value>, other: &Rc<Value>) -> bool {
+        return match (&**self, &**other) {
+            (Value::Name(a), Value::Name(b)) => a == b,
+            (Value::Integer(a), Value::Integer(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
+                a.eq(&b) && x.eq(&y)
+            },
+            (Value::Quote(xs), Value::Quote(ys)) => xs.eq(&ys),
+            (Value::Nil, Value::Nil) => true,
+            _ => false
+        };
+    }
+
+
+    pub fn len(&self) -> i64 {
+        /* Gets the length of a cons list */
+
+        let mut cursor = &self.clone().rc();
+        let mut length = -1;
+
+        while let Value::Cons { cdr, .. } = &**cursor {
+            cursor  = &cdr; // ew
+            length += 1
+        }
+
+        if length > -1 {
+            return length + 1;
+        } else {
+            panic!("Attempt to get length of something that isn't a list");
+        }
+    }
+
+
+    pub fn to_list(&self) -> Option<LinkedList<Rc<Value>>> {
+        /* Converts a cons list to a std::collections::LinkedList<SharedVal> */
+
+        if let Value::Nil = self {
+            return Some(LinkedList::new());
+        }
+
+        let mut cursor = self;
+        let mut count = 0;
+        let mut list = LinkedList::new();
+
+        while let Value::Cons { car, cdr } = cursor {
+            list.push_back(Rc::clone(car));
+            cursor = &cdr;
+
+            count += 1;
+        }
+
+        return if count == 0 {
+            None
+        } else {
+            Some(list)
+        };
+    }
+
+
+    pub fn name(&self) -> String {
+        /* if self = Value::Name(n) then n else String::new() */
+
+        return match self {
+            Value::Name(n) => n.clone(),
+            _ => String::new()
+        };
+    }
+
+
+    pub fn rc(self) -> Rc<Value> {
+        /* Value -> Rc<Value> */
+    
+        return Rc::new(self);
+    }
+
+
+    fn print_list<'a>(xs: Rc<Value>) -> String {
+        let mut string = String::new();
+        let mut cursor = &xs;
+
+        while let Value::Cons { car, cdr } = &**cursor {
+            string += &format!(" {}", *car)[..];
+            cursor  = &cdr;
+        }
+
+        match **cursor {
+            Value::Nil => {},
+            _ => string += &format!(" . {}", cursor)
+        }
+
+        return (&string[1..]).into();
+    }
+}
+
+
 impl<'a> std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return write!(f, "{}", match self {
@@ -195,6 +204,7 @@ impl<'a> std::fmt::Display for Value {
         });
     }
 }
+
 
 #[derive(Debug)]
 enum ValueStack {
@@ -232,6 +242,7 @@ fn read_atom(string: String) -> ValueStack {
 
     return ValueStack::Atom(value.rc());
 }
+
 
 fn read_nested_lists(source: &String, filename: String) -> ValueStack {
    /* O(n) nested list parser
@@ -350,6 +361,7 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
 
     return stack.pop_front().unwrap();
 }
+
 
 pub fn read(source: &String, filename: String) -> Vec<Rc<Value>> {
    /* Reads a source string into an array of Values */

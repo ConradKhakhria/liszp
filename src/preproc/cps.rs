@@ -2,8 +2,10 @@ use crate::read::Value;
 use crate::unroll_parameters;
 use crate::refcount_list;
 
+
 use std::collections::LinkedList;
 use std::rc::Rc;
+
 
 macro_rules! cursor_next {
     ($cursor:expr, $err:expr) => {
@@ -15,6 +17,7 @@ macro_rules! cursor_next {
         }
     }
 }
+
 
 #[allow(unused_assignments)]
 fn find_if(expr: &Rc<Value>) -> Option<(&Value, Rc<Value>, Rc<Value>, Rc<Value>)> {
@@ -53,6 +56,7 @@ fn find_if(expr: &Rc<Value>) -> Option<(&Value, Rc<Value>, Rc<Value>, Rc<Value>)
     }
 }
 
+
 fn replace(expr: &Rc<Value>, old: &Value, new: Rc<Value>) -> Rc<Value> {
     /* Replaces value 'old' with value 'new' in expression */
 
@@ -67,6 +71,7 @@ fn replace(expr: &Rc<Value>, old: &Value, new: Rc<Value>) -> Rc<Value> {
         Rc::clone(expr)
     };
 }
+
 
 pub fn move_ifs(expr: Rc<Value>) -> Rc<Value> {
    /* Moves all if expression to the 'effective top level'
@@ -96,6 +101,7 @@ pub fn move_ifs(expr: Rc<Value>) -> Rc<Value> {
         return expr;
     }
 }
+
 
 fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, usize)>) {
     /* Collects all of the lists depth-first in 'value' into a linked list */
@@ -156,6 +162,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
         }
     }
 }
+
 
 #[allow(unused_assignments)]
 pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<Rc<Value>>) -> Rc<Value> {

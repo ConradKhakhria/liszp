@@ -1,8 +1,15 @@
 use crate::read::Value;
-use crate::eval::{ builtin, operators::{ arithmetic, boolean, comparison } };
-
+use crate::eval::{
+    builtin,
+    operators::{
+        arithmetic,
+        boolean,
+        comparison
+    }
+};
 use std::collections::{ HashMap, LinkedList };
 use std::rc::Rc;
+
 
 #[macro_export]
 macro_rules! remove_amp {
@@ -13,6 +20,7 @@ macro_rules! remove_amp {
         }
     };
 }
+
 
 #[macro_export]
 macro_rules! unroll_parameters {
@@ -37,6 +45,7 @@ macro_rules! unroll_parameters {
 }
 
 pub (in crate::eval) type Env = HashMap<String, Rc<Value>>;
+
 
 /* Generic helper functions */
 
@@ -152,6 +161,7 @@ fn bind_variables(function: &Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
     return bound_variables_body;
 }
 
+
 fn no_continuation(args: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc<Value> {
     /* Ends an expression's evaluation */
 
@@ -163,6 +173,7 @@ fn no_continuation(args: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc
 
     panic!("Function no-continuation should be supplied with exactly one argument");
 }
+
 
 pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
    /* Evaluates an expression

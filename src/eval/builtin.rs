@@ -1,8 +1,8 @@
 use crate::read::Value;
 use crate::eval::eval_main::{Env, resolve_value};
-
 use std::collections::LinkedList;
 use std::rc::Rc;
+
 
 pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> Rc<Value> {
     /* Adds a value to the global namespace */
@@ -27,6 +27,7 @@ pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> R
     return crate::refcount_list![ k, &rc_nil];
 }
 
+
 pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name: String) -> Rc<Value> {
     /* Prints a value and then returns it */
 
@@ -47,6 +48,7 @@ pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name:
 
     return crate::refcount_list![k, &value];
 }
+
 
 pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Evaluates an if expression */
@@ -71,6 +73,7 @@ pub (in crate::eval) fn if_expr(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
     };
 }
 
+
 pub (in crate::eval) fn compare_values(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Compares two values of any type */
 
@@ -87,6 +90,7 @@ pub (in crate::eval) fn compare_values(parameters: &Rc<Value>, env: &Env) -> Rc<
 
     return crate::refcount_list![ k,  result ];
 }
+
 
 pub (in crate::eval) fn get_length(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Gets the length of a value */
@@ -105,6 +109,7 @@ pub (in crate::eval) fn get_length(parameters: &Rc<Value>, env: &Env) -> Rc<Valu
     return crate::refcount_list![ k, result ];
 }
 
+
 pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Quotes a value */
 
@@ -119,6 +124,7 @@ pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     return crate::refcount_list![ k, &value ];
 }
+
 
 pub (in crate::eval) fn eval_quoted(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Unquotes a value */
@@ -138,6 +144,7 @@ pub (in crate::eval) fn eval_quoted(parameters: &Rc<Value>, env: &Env) -> Rc<Val
         return crate::refcount_list![ k, x ];
     }
 }
+
 
 /* Cons functions */
 
@@ -169,6 +176,7 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     return crate::value_list![ &**k, &quote ];
 }
 
+
 pub (in crate::eval) fn car(parameters: &Rc<Value>, env: &Env, name: String) -> Rc<Value> {
     /* Takes car of a cons pair */
 
@@ -193,6 +201,7 @@ pub (in crate::eval) fn car(parameters: &Rc<Value>, env: &Env, name: String) -> 
 
     return crate::refcount_list![ k, &car ];
 }
+
 
 pub (in crate::eval) fn cdr(parameters: &Rc<Value>, env: &Env, name: String) -> Rc<Value> {
     /* Takes cdr of a cons pair */
@@ -219,6 +228,7 @@ pub (in crate::eval) fn cdr(parameters: &Rc<Value>, env: &Env, name: String) -> 
     return crate::refcount_list![ k, &cdr ];
 }
 
+
 pub (in crate::eval) fn panic(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Panics with an error message */
 
@@ -231,6 +241,7 @@ pub (in crate::eval) fn panic(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
 
     panic!("{}", resolve_value(m, env));
 }
+
 
 /* Type checking */
 
@@ -254,6 +265,7 @@ pub (in crate::eval) fn is_nil(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     return crate::refcount_list![ k, &result ];
 }
 
+
 pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Nil */
 
@@ -273,6 +285,7 @@ pub (in crate::eval) fn is_cons(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
 
     return crate::refcount_list![ k, &result ];
 }
+
 
 pub (in crate::eval) fn is_int(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Integer */
@@ -294,6 +307,7 @@ pub (in crate::eval) fn is_int(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     return crate::refcount_list![ k, &result ];
 }
 
+
 pub (in crate::eval) fn is_float(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Float */
 
@@ -313,6 +327,7 @@ pub (in crate::eval) fn is_float(parameters: &Rc<Value>, env: &Env) -> Rc<Value>
 
     return crate::refcount_list![ k, &result ];
 }
+
 
 pub (in crate::eval) fn is_bool(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Bool */
@@ -334,6 +349,7 @@ pub (in crate::eval) fn is_bool(parameters: &Rc<Value>, env: &Env) -> Rc<Value> 
     return crate::refcount_list![ k, &result ];
 }
 
+
 pub (in crate::eval) fn is_string(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::String */
 
@@ -354,6 +370,7 @@ pub (in crate::eval) fn is_string(parameters: &Rc<Value>, env: &Env) -> Rc<Value
     return crate::refcount_list![ k, &result ];
 }
 
+
 pub (in crate::eval) fn is_quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Quote */
 
@@ -373,6 +390,7 @@ pub (in crate::eval) fn is_quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value>
 
     return crate::refcount_list![ k, &result ];
 }
+
 
 pub (in crate::eval) fn is_name(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
     /* Returns whether the arg is a Value::Name */
