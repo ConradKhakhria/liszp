@@ -85,7 +85,7 @@ pub (in crate::eval) fn compare_values(parameters: &Rc<Value>, env: &Env) -> Rc<
     };
 
     let result = &Rc::new(Value::Bool(
-        resolve_value(x, env).eq(&resolve_value(y, env))
+        resolve_value(x, env) == resolve_value(y, env)
     ));
 
     return crate::refcount_list![ k,  result ];

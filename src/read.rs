@@ -77,22 +77,6 @@ pub enum Value {
 
 
 impl Value {
-    pub fn eq(self: &Rc<Value>, other: &Rc<Value>) -> bool {
-        return match (&**self, &**other) {
-            (Value::Name(a), Value::Name(b)) => a == b,
-            (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a), Value::Float(b)) => a == b,
-            (Value::Bool(a), Value::Bool(b)) => a == b,
-            (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
-                a.eq(&b) && x.eq(&y)
-            },
-            (Value::Quote(xs), Value::Quote(ys)) => xs.eq(&ys),
-            (Value::Nil, Value::Nil) => true,
-            _ => false
-        };
-    }
-
-
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
@@ -202,6 +186,24 @@ impl std::fmt::Display for Value {
                 "nil".into()
             }
         });
+    }
+}
+
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Name(a), Value::Name(b)) => a == b,
+            (Value::Integer(a), Value::Integer(b)) => a == b,
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
+                a == b && x == y
+            },
+            (Value::Quote(x), Value::Quote(y)) => x == y,
+            (Value::Nil, Value::Nil) => true,
+            _ => false
+        }
     }
 }
 
