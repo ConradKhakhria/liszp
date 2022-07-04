@@ -1,5 +1,5 @@
 pub mod cps;
 pub mod fmt;
-pub mod preproc;
+pub mod preprocessor;
 
-pub use preproc::preprocess as preprocess;
+pub use preprocessor::preprocess as preprocess;
