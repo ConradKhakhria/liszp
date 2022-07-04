@@ -87,7 +87,7 @@ pub fn move_ifs(expr: Rc<Value>) -> Rc<Value> {
         let fbranch = move_ifs(replace(&expr, if_expr, fcase));
 
         return refcount_list![
-            Value::Name("if&".into()).refcounted(),
+            Value::Name("if&".into()).rc(),
             cond,
             tbranch,
             fbranch
@@ -113,17 +113,17 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 };
 
                 let args = Rc::new(Value::Cons {
-                    car: Value::Name("k@@".into()).refcounted(),
+                    car: Value::Name("k@@".into()).rc(),
                     cdr: Rc::clone(args)
                 });
 
                 let body = if let Value::Cons { .. } = &**body {
                     convert(
                         Rc::clone(body),
-                        Some(Value::Name("k@@".into()).refcounted())
+                        Some(Value::Name("k@@".into()).rc())
                     )
                 } else {
-                    refcount_list![ Value::Name("k@@".into()).refcounted(), Rc::clone(body) ]
+                    refcount_list![ Value::Name("k@@".into()).rc(), Rc::clone(body) ]
                 };
 
                 *current = refcount_list![ lambda_kwd, &args, &body ];
@@ -131,11 +131,11 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
 
             "quote&" => {
                 vals.push_front((Rc::clone(current), vals.len() + 1));
-                *current = Value::Name(format!("k{}@@", vals.len())).refcounted();
+                *current = Value::Name(format!("k{}@@", vals.len())).rc();
             },
 
             _ => {
-                let mut new_cons_list = Value::Nil.refcounted();
+                let mut new_cons_list = Value::Nil.rc();
                 let mut list = (**current).to_list()
                                           .expect("Liszp: internal error in dfs_value_collect() :: 2");
         
@@ -151,7 +151,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 }
         
                 vals.push_front((Rc::clone(&new_cons_list), vals.len() + 1));
-                *current = Value::Name(format!("k{}@@", vals.len())).refcounted();
+                *current = Value::Name(format!("k{}@@", vals.len())).rc();
             }
         }
     }
@@ -173,8 +173,8 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
             let fbranch = cursor_next!(cursor, if_error);
 
             let expr = refcount_list![
-                Value::Name("if&".into()).refcounted(),
-                Value::Name("k-if@@".into()).refcounted(),
+                Value::Name("if&".into()).rc(),
+                Value::Name("k-if@@".into()).rc(),
                 convert(Rc::clone(tbranch), main_continuation.clone()),
                 convert(Rc::clone(fbranch), main_continuation)
             ];
@@ -182,8 +182,8 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
             return convert(
                 Rc::clone(condition),
                 Some(refcount_list![
-                    Value::Name("lambda&".into()).refcounted(),
-                    Value::Name("k-if@@".into()).refcounted(),
+                    Value::Name("lambda&".into()).rc(),
+                    Value::Name("k-if@@".into()).rc(),
                     expr
                 ])
             );
@@ -197,14 +197,14 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
 
     let mut layered = false;
     let mut converted_expression = main_continuation
-                            .unwrap_or(Value::Name("no-continuation".into()).refcounted());
+                            .unwrap_or(Value::Name("no-continuation".into()).rc());
 
     for (expr, cont_num) in vals.iter() {
         if let Value::Cons { car, cdr } = &**expr {
             let continuation = if layered {
                 refcount_list![
-                    Value::Name("lambda&".into()).refcounted(),
-                    Value::Name(format!("k{}@@", cont_num)).refcounted(),
+                    Value::Name("lambda&".into()).rc(),
+                    Value::Name(format!("k{}@@", cont_num)).rc(),
                     converted_expression
                 ]
             } else {

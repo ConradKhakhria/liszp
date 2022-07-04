@@ -22,7 +22,7 @@ pub (in crate::eval) fn define_value(parameters: &Rc<Value>, env: &mut Env) -> R
 
     env.insert(name.clone(), Rc::clone(body_value));
 
-    let rc_nil = Value::Nil.refcounted();
+    let rc_nil = Value::Nil.rc();
 
     return crate::refcount_list![ k, &rc_nil];
 }
@@ -115,7 +115,7 @@ pub (in crate::eval) fn quote(parameters: &Rc<Value>, env: &Env) -> Rc<Value> {
         k, x
     );
 
-    let value = Value::Quote(Rc::clone(&resolve_value(x, env))).refcounted();
+    let value = Value::Quote(Rc::clone(&resolve_value(x, env))).rc();
 
     return crate::refcount_list![ k, &value ];
 }

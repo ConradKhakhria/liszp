@@ -132,7 +132,7 @@ pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env)
         integer_arithmetic(op, numbers)
     };
 
-    return refcount_list![ continuation, result.refcounted() ];
+    return refcount_list![ continuation, result.rc() ];
 }
 
 /* Comparison */
@@ -149,7 +149,7 @@ fn integer_comparison(op: String, x: &rug::Integer, y: &rug::Integer) -> Rc<Valu
         _     => x != y
     };
 
-    return Value::Bool(result).refcounted();
+    return Value::Bool(result).rc();
 }
 
 fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
@@ -164,7 +164,7 @@ fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
         _     => x != y
     };
 
-    return Value::Bool(result).refcounted();
+    return Value::Bool(result).rc();
 }
 
 pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
@@ -232,7 +232,7 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
         panic!("Function '{}' expected boolean arguments", remove_amp!(op));
     };
 
-    let y = if let Value::Bool(b) = **resolve_value(plist_iter.next().unwrap_or(&Value::Bool(true).refcounted()), env) {
+    let y = if let Value::Bool(b) = **resolve_value(plist_iter.next().unwrap_or(&Value::Bool(true).rc()), env) {
         b
     } else {
         panic!("Function '{}' expected boolean arguments", remove_amp!(op));
@@ -245,5 +245,5 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
         _      => x ^ y     // xor
     };
 
-    return refcount_list![ Rc::clone(k), Value::Bool(result).refcounted() ];
+    return refcount_list![ Rc::clone(k), Value::Bool(result).rc() ];
 }
