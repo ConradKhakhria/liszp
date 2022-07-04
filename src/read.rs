@@ -174,7 +174,7 @@ impl Value {
 }
 
 
-impl<'a> std::fmt::Display for Value {
+impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return write!(f, "{}", match self {
             Value::Name(s) => {
