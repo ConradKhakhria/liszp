@@ -19,7 +19,7 @@ fn main() {
     /* Read */
 
     let source = std::fs::read_to_string(filename.clone()).unwrap();
-    let values: LinkedList<Rc<read::Value>> = read::read(&source, filename)
+    let values: Vec<Rc<read::Value>> = read::read(&source, filename)
                                                 .iter()
                                                 .map(|v| preproc::preprocess(Rc::clone(v)))
                                                 .collect();
