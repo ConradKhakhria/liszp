@@ -96,6 +96,41 @@ impl Value {
     }
 
 
+    pub fn name(&self) -> String {
+        /* if self = Value::Name(n) then n else String::new() */
+
+        return match self {
+            Value::Name(n) => n.clone(),
+            _ => String::new()
+        };
+    }
+
+
+    fn print_list(xs: Rc<Value>) -> String {
+        let mut string = String::new();
+        let mut cursor = &xs;
+
+        while let Value::Cons { car, cdr } = &**cursor {
+            string += &format!(" {}", *car)[..];
+            cursor  = &cdr;
+        }
+
+        match **cursor {
+            Value::Nil => {},
+            _ => string += &format!(" . {}", cursor)
+        }
+
+        return (&string[1..]).into();
+    }
+
+
+    pub fn rc(self) -> Rc<Value> {
+        /* Value -> Rc<Value> */
+    
+        return Rc::new(self);
+    }
+
+
     pub fn to_list(&self) -> Option<Vec<Rc<Value>>> {
         /* Converts a cons list to a Vec<Rc<Value>> */
 
@@ -119,41 +154,6 @@ impl Value {
         } else {
             Some(list)
         };
-    }
-
-
-    pub fn name(&self) -> String {
-        /* if self = Value::Name(n) then n else String::new() */
-
-        return match self {
-            Value::Name(n) => n.clone(),
-            _ => String::new()
-        };
-    }
-
-
-    pub fn rc(self) -> Rc<Value> {
-        /* Value -> Rc<Value> */
-    
-        return Rc::new(self);
-    }
-
-
-    fn print_list(xs: Rc<Value>) -> String {
-        let mut string = String::new();
-        let mut cursor = &xs;
-
-        while let Value::Cons { car, cdr } = &**cursor {
-            string += &format!(" {}", *car)[..];
-            cursor  = &cdr;
-        }
-
-        match **cursor {
-            Value::Nil => {},
-            _ => string += &format!(" . {}", cursor)
-        }
-
-        return (&string[1..]).into();
     }
 }
 
