@@ -116,7 +116,7 @@ impl Value {
     }
 
 
-    pub fn to_list(&self) -> Option<Vec<Rc<Value>>> {
+    pub fn to_array(&self) -> Option<Vec<Rc<Value>>> {
         /* Converts a cons list to a Vec<Rc<Value>> */
 
         if let Value::Nil = self {
@@ -144,13 +144,26 @@ impl Value {
 
     /* Namespaced functions */
 
-    fn cons(car: &Rc<Value>, cdr: &Rc<Value>) -> Value {
+    pub fn cons(car: &Rc<Value>, cdr: &Rc<Value>) -> Value {
         /* Creates a cons pair */
 
         Value::Cons {
             car: Rc::clone(car),
             cdr: Rc::clone(cdr)
         }
+    }
+
+
+    pub fn cons_list<'a, I: std::iter::DoubleEndedIterator<Item = &'a Rc<Value>>>(xs: I) -> Rc<Value> {
+        /* Creates a cons list out of an iterable */
+
+        let mut cursor = Value::Nil.rc();
+
+        for x in xs.into_iter().rev() {
+            cursor = Value::cons(x, &cursor).rc();
+        }
+
+        cursor
     }
 
 
