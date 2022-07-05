@@ -144,6 +144,16 @@ impl Value {
 
     /* Namespaced functions */
 
+    fn cons(car: &Rc<Value>, cdr: &Rc<Value>) -> Value {
+        /* Creates a cons pair */
+
+        Value::Cons {
+            car: Rc::clone(car),
+            cdr: Rc::clone(cdr)
+        }
+    }
+
+
     fn print_list(xs: Rc<Value>) -> String {
         let mut string = String::new();
         let mut cursor = &xs;
