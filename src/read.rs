@@ -154,7 +154,7 @@ impl Value {
     }
 
 
-    pub fn cons_list<'a, I: std::iter::DoubleEndedIterator<Item = &'a Rc<Value>>>(xs: I) -> Rc<Value> {
+    pub fn cons_list(xs: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Creates a cons list out of an iterable */
 
         let mut cursor = Value::Nil.rc();
