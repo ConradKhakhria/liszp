@@ -116,7 +116,7 @@ impl Value {
     }
 
 
-    pub fn to_array(&self) -> Option<Vec<Rc<Value>>> {
+    pub fn to_list(&self) -> Option<Vec<Rc<Value>>> {
         /* Converts a cons list to a Vec<Rc<Value>> */
 
         if let Value::Nil = self {
