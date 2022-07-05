@@ -14,10 +14,7 @@ use std::rc::Rc;
 #[macro_export]
 macro_rules! remove_amp {
     ($string:expr) => {
-        {
-            let temp_len = $string.len();
-            &($string)[..temp_len-1]
-        }
+        &($string)[1..]
     };
 }
 
@@ -89,7 +86,7 @@ fn bind_variables(function: &Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
             },
 
             Value::Cons { car, cdr } => {
-                if &(**car).name()[..] == "lambda&" {
+                if &(**car).name()[..] == "&lambda" {
                     // The only reason a Value::Cons(name) wouldn't be bound to 'value'
                     // is if the name is shadowed in a lambda expression. To check this,
                     // we see if this lambda expression contains an arg whose name is 'name'
@@ -192,29 +189,29 @@ pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
 
     while let Value::Cons { car: function_value, cdr: args } = &*value {
         value = match &function_value.name()[..] {
-            "def&"                            => builtin::define_value(args, env),
-            "print&"|"println&"               => builtin::print_value(args, env, function_value.name()),
-            "if&"                             => builtin::if_expr(args, env),
-            "equals?&"                        => builtin::compare_values(args, env),
-            "len&"                            => builtin::get_length(args, env),
-            "quote&"                          => builtin::quote(args, env),
-            "eval&"                           => builtin::eval_quoted(args, env),
-            "cons&"                           => builtin::cons(args, env),
-            "car&"|"first&"                   => builtin::car(args, env, function_value.name()),
-            "cdr&"|"rest&"                    => builtin::cdr(args, env, function_value.name()),
-            "panic&"                          => builtin::panic(args, env),
-            "null?&"|"empty?&"|"nil?&"        => builtin::is_nil(args, env),
-            "cons?&"|"pair?&"                 => builtin::is_cons(args, env),
-            "int?&"                           => builtin::is_int(args, env),
-            "float?&"                         => builtin::is_float(args, env),
-            "str?&"                           => builtin::is_string(args, env),
-            "bool?&"                          => builtin::is_bool(args, env),
-            "quote?&"                         => builtin::is_quote(args, env),
-            "name?&"                          => builtin::is_name(args, env),
+            "&def"                            => builtin::define_value(args, env),
+            "&print"|"&println"               => builtin::print_value(args, env, function_value.name()),
+            "&if"                             => builtin::if_expr(args, env),
+            "&equals?"                        => builtin::compare_values(args, env),
+            "&len"                            => builtin::get_length(args, env),
+            "&quote"                          => builtin::quote(args, env),
+            "&eval"                           => builtin::eval_quoted(args, env),
+            "&cons"                           => builtin::cons(args, env),
+            "&car"|"&first"                   => builtin::car(args, env, function_value.name()),
+            "&cdr"|"&rest"                    => builtin::cdr(args, env, function_value.name()),
+            "&panic"                          => builtin::panic(args, env),
+            "&null?"|"&empty?"|"&nil?"        => builtin::is_nil(args, env),
+            "&cons?"|"&pair?"                 => builtin::is_cons(args, env),
+            "&int?"                           => builtin::is_int(args, env),
+            "&float?"                         => builtin::is_float(args, env),
+            "&str?"                           => builtin::is_string(args, env),
+            "&bool?"                          => builtin::is_bool(args, env),
+            "&quote?"                         => builtin::is_quote(args, env),
+            "&name?"                          => builtin::is_name(args, env),
             "no-continuation"                 => no_continuation(args, env),
-            "+&"|"-&"|"*&"|"/&"|"%&"          => arithmetic(function_value.name(), Rc::clone(args), env),
-            "not&"|"and&"|"or&"|"xor&"        => boolean(function_value.name(), Rc::clone(args), env),
-            "<&"|">&"|"<=&"|">=&"|"==&"|"!=&" => comparison(function_value.name(), Rc::clone(args), env),
+            "&+"|"&-"|"&*"|"&/"|"&%"          => arithmetic(function_value.name(), Rc::clone(args), env),
+            "&not"|"&and"|"&or"|"&xor"        => boolean(function_value.name(), Rc::clone(args), env),
+            "&<"|"&>"|"&<="|"&>="|"&=="|"&!=" => comparison(function_value.name(), Rc::clone(args), env),
             _                                 => bind_variables(resolve_value(function_value, env), args)
         };
     }

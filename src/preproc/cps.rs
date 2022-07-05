@@ -26,7 +26,7 @@ fn find_if(expr: &Rc<Value>) -> Option<(&Value, Rc<Value>, Rc<Value>, Rc<Value>)
     let if_error = "Liszp: expected syntax (if <cond> <true-case> <false-case>)";
 
     return if let Value::Cons { car, cdr } = &**expr {
-        if (**car).name() == "if&" {
+        if (**car).name() == "&if" {
             let mut cursor = cdr;
 
             let cond  = cursor_next!(cursor, if_error);
@@ -39,7 +39,7 @@ fn find_if(expr: &Rc<Value>) -> Option<(&Value, Rc<Value>, Rc<Value>, Rc<Value>)
                 Rc::clone(tcase),
                 Rc::clone(fcase)
             ))
-        } else if (**car).name() == "lambda&" {
+        } else if (**car).name() == "&lambda" {
             None
         } else {
             let fcar = find_if(car);
@@ -92,7 +92,7 @@ pub fn move_ifs(expr: Rc<Value>) -> Rc<Value> {
         let fbranch = move_ifs(replace(&expr, if_expr, fcase));
 
         return refcount_list![
-            Value::Name("if&".into()).rc(),
+            Value::Name("&if".into()).rc(),
             cond,
             tbranch,
             fbranch
@@ -110,7 +110,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
         let first_word = &(**first).name()[..];
 
         match first_word {
-            "lambda&" => {
+            "&lambda" => {
                 unroll_parameters! {
                     current,
                     "Liszp: expected syntax (lambda <args> <body>)",
@@ -135,7 +135,7 @@ fn dfs_value_collect(current: &mut Rc<Value>, vals: &mut LinkedList<(Rc<Value>, 
                 *current = refcount_list![ lambda_kwd, &args, &body ];
             },
 
-            "quote&" => {
+            "&quote" => {
                 vals.push_front((Rc::clone(current), vals.len() + 1));
                 *current = Value::Name(format!("k{}@@", vals.len())).rc();
             },
@@ -170,7 +170,7 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
 
     // Special case for 'if' expressions
     if let Value::Cons { car, cdr } = &*value {
-        if (**car).name() == "if&" {
+        if (**car).name() == "&if" {
             let if_error = "Liszp: expected syntax (if <cond> <true-case> <false-case>)";
 
             let mut cursor = cdr;
@@ -180,7 +180,7 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
             let fbranch = cursor_next!(cursor, if_error);
 
             let expr = refcount_list![
-                Value::Name("if&".into()).rc(),
+                Value::Name("&if".into()).rc(),
                 Value::Name("k-if@@".into()).rc(),
                 convert(Rc::clone(tbranch), main_continuation.clone()),
                 convert(Rc::clone(fbranch), main_continuation)
@@ -189,7 +189,7 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
             return convert(
                 Rc::clone(condition),
                 Some(refcount_list![
-                    Value::Name("lambda&".into()).rc(),
+                    Value::Name("&lambda".into()).rc(),
                     Value::Name("k-if@@".into()).rc(),
                     expr
                 ])
@@ -210,7 +210,7 @@ pub (in crate::preproc) fn convert(value: Rc<Value>, main_continuation: Option<R
         if let Value::Cons { car, cdr } = &**expr {
             let continuation = if layered {
                 refcount_list![
-                    Value::Name("lambda&".into()).rc(),
+                    Value::Name("&lambda".into()).rc(),
                     Value::Name(format!("k{}@@", cont_num)).rc(),
                     converted_expression
                 ]

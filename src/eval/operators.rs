@@ -9,6 +9,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use rug;
 
+
 /* Arithmetic */
 
 fn float_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
@@ -33,10 +34,10 @@ fn float_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
     }
 
     match &op[..] {
-        "+&" => reduce_stmt!(+=),
-        "-&" => reduce_stmt!(-=),
-        "*&" => reduce_stmt!(*=),
-        "/&" => reduce_stmt!(/=),
+        "&+" => reduce_stmt!(+=),
+        "&-" => reduce_stmt!(-=),
+        "&*" => reduce_stmt!(*=),
+        "&/" => reduce_stmt!(/=),
          _   => {
             for n in numbers.iter().dropping(1) {
                 match &***n {
@@ -48,12 +49,13 @@ fn float_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
          }
     }
 
-    return if &op[..] == "-&" && numbers.len() == 1 {
+    return if &op[..] == "&-" && numbers.len() == 1 {
         Value::Float(-result)
     } else {
         Value::Float(result)
     };
 }
+
 
 fn integer_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
     /* Evaluates an arithmetic expression consisting of all integers */
@@ -75,19 +77,20 @@ fn integer_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
     }
 
     match &op[..] {
-        "+&" => reduce_stmt!(+=),
-        "-&" => reduce_stmt!(-=),
-        "*&" => reduce_stmt!(*=),
-        "/&" => reduce_stmt!(/=),
+        "&+" => reduce_stmt!(+=),
+        "&-" => reduce_stmt!(-=),
+        "&*" => reduce_stmt!(*=),
+        "&/" => reduce_stmt!(/=),
         _    => reduce_stmt!(%=)
     }
 
-    return if &op[..] == "-&" && numbers.len() == 1 {
+    return if &op[..] == "&-" && numbers.len() == 1 {
         Value::Integer(-result)
     } else {
         Value::Integer(result)
     };
 }
+
 
 pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
     /* Evaluates an arithmetic expression */
@@ -135,17 +138,18 @@ pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env)
     return refcount_list![ continuation, result.rc() ];
 }
 
+
 /* Comparison */
 
 fn integer_comparison(op: String, x: &rug::Integer, y: &rug::Integer) -> Rc<Value> {
     /* Compares two integer values */
 
     let result = match &op[..] {
-        "<&"  => x < y,
-        ">&"  => x > y,
-        "<=&" => x <= y,
-        ">=&" => x >= y,
-        "==&" => x == y,
+        "&<"  => x < y,
+        "&>"  => x > y,
+        "&<=" => x <= y,
+        "&>=" => x >= y,
+        "&==" => x == y,
         _     => x != y
     };
 
@@ -156,11 +160,11 @@ fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
     /* Compares two floating point values */
 
     let result = match &op[..] {
-        "<&"  => x < y,
-        ">&"  => x > y,
-        "<=&" => x <= y,
-        ">=&" => x >= y,
-        "==&" => x == y,
+        "&<"  => x < y,
+        "&>"  => x > y,
+        "&<=" => x <= y,
+        "&>=" => x >= y,
+        "&==" => x == y,
         _     => x != y
     };
 
@@ -217,9 +221,9 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
     let parameter_list = parameters.to_list()
                                    .expect("Expected syntax (not <value>)");
 
-    if &op[..] == "not&" && parameter_list.len() != 2 {
+    if &op[..] == "&not" && parameter_list.len() != 2 {
         panic!("Function 'not' expected 1 argument, recieved {}", parameter_list.len() - 2);
-    } else if &op[..] != "not&" && parameter_list.len() != 3 {
+    } else if &op[..] != "&not" && parameter_list.len() != 3 {
         println!("{}", op);
         panic!("Function '{}' expected 2 arguments, recieved {}", remove_amp!(op), parameter_list.len() - 2);
     }
@@ -239,9 +243,9 @@ pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) ->
     };
 
     let result = match &op[..] {
-        "not&" => !x,
-        "and&" => x && y,
-        "or&"  => x || y,
+        "&not" => !x,
+        "&and" => x && y,
+        "&or"  => x || y,
         _      => x ^ y     // xor
     };
 

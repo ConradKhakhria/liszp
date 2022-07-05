@@ -40,7 +40,7 @@ pub (in crate::eval) fn print_value(parameters: &Rc<Value>, env: &mut Env, name:
 
     let value = resolve_value(v, env);
 
-    if &name[..] == "println&" {
+    if &name[..] == "&println" {
         println!("{}", *value);
     } else {
         print!("{}", *value);

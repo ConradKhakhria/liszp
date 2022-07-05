@@ -223,8 +223,8 @@ fn read_atom(string: String) -> ValueStack {
 
     let value = match (&string[..], string.chars().next().unwrap()) {
         (_, '0'..='9') => {
-            let parse_int = string.parse::<i64>();
-            let parse_flt = string.parse::<i64>();
+            let parse_int = rug::Integer::parse(&string);
+            let parse_flt = rug::Float::parse(&string);
 
             match (parse_int, parse_flt) {
                 (Ok(i), _) => Value::Integer(rug::Integer::from(i)),
