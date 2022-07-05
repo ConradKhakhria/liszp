@@ -77,6 +77,9 @@ pub enum Value {
 
 
 impl Value {
+
+    /* Methods */
+
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
@@ -103,24 +106,6 @@ impl Value {
             Value::Name(n) => n.clone(),
             _ => String::new()
         };
-    }
-
-
-    fn print_list(xs: Rc<Value>) -> String {
-        let mut string = String::new();
-        let mut cursor = &xs;
-
-        while let Value::Cons { car, cdr } = &**cursor {
-            string += &format!(" {}", *car)[..];
-            cursor  = &cdr;
-        }
-
-        match **cursor {
-            Value::Nil => {},
-            _ => string += &format!(" . {}", cursor)
-        }
-
-        return (&string[1..]).into();
     }
 
 
@@ -154,6 +139,42 @@ impl Value {
         } else {
             Some(list)
         };
+    }
+
+
+    /* Namespaced functions */
+
+    fn print_list(xs: Rc<Value>) -> String {
+        let mut string = String::new();
+        let mut cursor = &xs;
+
+        while let Value::Cons { car, cdr } = &**cursor {
+            string += &format!(" {}", *car)[..];
+            cursor  = &cdr;
+        }
+
+        match **cursor {
+            Value::Nil => {},
+            _ => string += &format!(" . {}", cursor)
+        }
+
+        return (&string[1..]).into();
+    }
+
+
+    pub fn substitute(expr: &Rc<Value>, old: &Rc<Value>, new: &Rc<Value>) -> Rc<Value> {
+        /* Returns self but with replacing a certain expression */
+
+        if std::ptr::eq(&**expr, &**old) {
+            Rc::clone(new)
+        } else if let Value::Cons { car, cdr} = &**expr {
+            Rc::new(Value::Cons {
+                car: Self::substitute(car, old, new),
+                cdr: Self::substitute(cdr, old, new)
+            })
+        } else {
+            Rc::clone(expr)
+        }
     }
 }
 
