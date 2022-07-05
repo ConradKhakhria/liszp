@@ -2,7 +2,7 @@ mod read;
 mod eval;
 mod preproc;
 
-use std::collections::{ HashMap, LinkedList };
+use std::collections::HashMap;
 use std::rc::Rc;
 
 fn main() {
