@@ -96,19 +96,19 @@ impl Value {
     }
 
 
-    pub fn to_list(&self) -> Option<LinkedList<Rc<Value>>> {
-        /* Converts a cons list to a std::collections::LinkedList<SharedVal> */
+    pub fn to_list(&self) -> Option<Vec<Rc<Value>>> {
+        /* Converts a cons list to a Vec<Rc<Value>> */
 
         if let Value::Nil = self {
-            return Some(LinkedList::new());
+            return Some(vec![]);
         }
 
         let mut cursor = self;
         let mut count = 0;
-        let mut list = LinkedList::new();
+        let mut list = vec![];
 
         while let Value::Cons { car, cdr } = cursor {
-            list.push_back(Rc::clone(car));
+            list.push(Rc::clone(car));
             cursor = &cdr;
 
             count += 1;
@@ -139,7 +139,7 @@ impl Value {
     }
 
 
-    fn print_list<'a>(xs: Rc<Value>) -> String {
+    fn print_list(xs: Rc<Value>) -> String {
         let mut string = String::new();
         let mut cursor = &xs;
 

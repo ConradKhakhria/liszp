@@ -93,9 +93,7 @@ fn bind_variables(function: &Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
 
                     let args = if let Value::Cons { car: asv, .. } = &**cdr {
                         if let Value::Name(_) = &**asv {
-                            let mut temp_list = LinkedList::new();
-                            temp_list.push_back(Rc::clone(&asv));
-                            temp_list
+                            vec![ Rc::clone(&asv) ]
                         } else {
                             asv.to_list().expect("Liszp: expected lambda function to have args")
                         }
@@ -131,10 +129,7 @@ fn bind_variables(function: &Rc<Value>, args: &Rc<Value>) -> Rc<Value> {
 
     let supplied_args = args.to_list().expect("Liszp: expected function to be called with args");
     let function_args = if let Value::Name(_) = &**function_args_val {
-        let mut list = LinkedList::new();
-        list.push_back(Rc::clone(function_args_val));
-
-        list
+        vec![ Rc::clone(function_args_val) ]
     } else {
         function_args_val.to_list()
                          .expect(&format!("Liszp: function not defined with arguments (received expr {})", function_args_val)[..])

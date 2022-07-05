@@ -102,7 +102,7 @@ pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env)
                                                       .expect(&format!("Expected {} function to have args", op)[..]);
 
     let continuation = if parameter_list.len() > 1 {
-        let c = Rc::clone(parameter_list.front().unwrap());
+        let c = Rc::clone(&parameter_list[0]);
         parameter_list = parameter_list.split_off(1);
 
         c
