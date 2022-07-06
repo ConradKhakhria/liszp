@@ -11,7 +11,7 @@ macro_rules! value_list {
     [ $( $x:expr ),* ] => {
         {
             let mut cons = Value::Nil.rc();
-            let mut expr_list = LinkedList::new();
+            let mut expr_list = std::collections::LinkedList::new();
 
             $(
                 expr_list.push_front($x);
@@ -34,7 +34,7 @@ macro_rules! refcount_list {
     [ $( $x:expr ),* ] => {
         {
             let mut cons = Value::Nil.rc();
-            let mut expr_list = LinkedList::new();
+            let mut expr_list = std::collections::LinkedList::new();
 
             $(
                 expr_list.push_front($x);
