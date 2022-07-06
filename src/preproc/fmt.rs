@@ -2,7 +2,7 @@ use crate::read::Value;
 use std::rc::Rc;
 
 
-pub (in crate::preproc) fn format_names(value: &Rc<Value>) -> Rc<Value> {
+pub fn format_names(value: &Rc<Value>) -> Rc<Value> {
     /* Appends an ampersand to each name to avoid collision with 'no-continuation' */
 
     return match &**value {
