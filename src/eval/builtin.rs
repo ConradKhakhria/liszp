@@ -1,6 +1,5 @@
 use crate::read::Value;
 use crate::eval::eval_main::{OldEnv, resolve_value};
-use std::collections::LinkedList;
 use std::rc::Rc;
 
 
