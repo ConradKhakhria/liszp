@@ -119,7 +119,7 @@ impl Env {
         /* The final stage of a trampolined evaluation */
 
         if args.len() == 1 {
-            Rc::clone(&args[0])
+            self.resolve(&args[0])
         } else {
             unreachable!()
         }
@@ -133,7 +133,7 @@ impl Env {
             panic!("Function print{} takes 1 argument only", if newline { "ln" } else { "" });
         }
 
-        let continuation = self.resolve(&args[0]);
+        let continuation = &args[0];
         let value = self.resolve(&args[1]);
 
         if newline {
@@ -142,6 +142,6 @@ impl Env {
             print!("{}", value);
         }
 
-        refcount_list![continuation, value]
+        refcount_list![Rc::clone(continuation), value]
     }
 }
