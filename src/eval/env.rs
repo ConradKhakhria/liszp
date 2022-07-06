@@ -71,7 +71,7 @@ impl Env {
 
     /* built-in functions */
 
-    fn define_value(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+    fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Defines a value in self.globals */
 
         if args.len() != 3 {
