@@ -27,6 +27,21 @@ impl Env {
     }
 
 
+    /* Env-related functions */
+
+    fn resolve(&self, value: &Rc<Value>) -> Rc<Value> {
+        /* If 'value' is a name, this substitutes it for the ident's value */
+
+        Rc::clone(
+        if let Value::Name(name) = &**value {
+                self.globals.get(name).expect(format!("Unbound name '{}'", &name[1..]).as_str())
+            } else {
+                value
+            }
+        )
+    }
+
+
     /* Eval */
 
     pub fn eval(&mut self, expr: &Rc<Value>) -> Rc<Value> {
@@ -38,9 +53,15 @@ impl Env {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function.name().as_str() {
-                "&define" => self.define_value(&args),
-
-                _ => todo!()
+                "&define"         => self.define_value(&args),
+                "&if"             => self.if_expr(&args),
+                "no-continuation" => self.no_continuation(&args),
+                "&print"          => self.print_value(&args, false),
+                "&println"        => self.print_value(&args, true),
+                name              => {
+                    println!("{}", name);
+                    todo!()
+                }
             }
         }
 
@@ -50,7 +71,7 @@ impl Env {
 
     /* built-in functions */
 
-    fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+    fn define_value(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Defines a value in self.globals */
 
         if args.len() != 3 {
@@ -71,15 +92,49 @@ impl Env {
     }
 
 
-    fn print_value(&mut self, args: &Vec<Rc<Value>>, newline: bool) -> Rc<Value> {
+    fn if_expr(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Evaluates an if expression */
+    
+        if args.len() != 3 {
+            panic!("Liszp: if expression has syntax (if <condition> <true case> <false case>)");
+        }
+
+        let cond = self.resolve(&args[0]);
+        let true_case = self.resolve(&args[1]);
+        let false_case = self.resolve(&args[2]);
+
+        if let Value::Bool(b) = &*cond {
+            if *b {
+                true_case
+            } else {
+                false_case
+            }
+        } else {
+            panic!("if expression expected a boolean condition")
+        }
+    }
+
+
+    fn no_continuation(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* The final stage of a trampolined evaluation */
+
+        if args.len() == 1 {
+            Rc::clone(&args[0])
+        } else {
+            unreachable!()
+        }
+    }
+
+
+    fn print_value(&self, args: &Vec<Rc<Value>>, newline: bool) -> Rc<Value> {
         /* Prints a value, optionally with a newline */
 
         if args.len() != 2 {
             panic!("Function print{} takes 1 argument only", if newline { "ln" } else { "" });
         }
 
-        let continuation = &args[0];
-        let value = &args[1];
+        let continuation = self.resolve(&args[0]);
+        let value = self.resolve(&args[1]);
 
         if newline {
             println!("{}", value);
@@ -87,6 +142,6 @@ impl Env {
             print!("{}", value);
         }
 
-        refcount_list![ Rc::clone(continuation), Rc::clone(value) ]
+        refcount_list![continuation, value]
     }
 }
