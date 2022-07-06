@@ -7,8 +7,7 @@ pub fn preprocess(expr: Rc<Value>) -> Rc<Value> {
     /* Preprocesses a value */
 
     let formatted = fmt::format_names(&expr);
-    let if_rearranged = cps::move_ifs(formatted);
-    let cps_converted = cps::convert(if_rearranged, None);
+    let cps_converted = cps::convert_expr(&formatted);
 
-    return cps_converted;
+    cps_converted
 }
