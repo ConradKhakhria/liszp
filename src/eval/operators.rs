@@ -1,4 +1,4 @@
-use crate::eval::eval_main::{ Env, resolve_value };
+use crate::eval::eval_main::{ OldEnv, resolve_value };
 use crate::read::Value;
 use crate::refcount_list;
 use crate::remove_amp;
@@ -92,7 +92,7 @@ fn integer_arithmetic(op: String, numbers: LinkedList<&Rc<Value>>) -> Value {
 }
 
 
-pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
+pub (in crate::eval) fn arithmetic(op: String, parameters: Rc<Value>, env: &OldEnv) -> Rc<Value> {
     /* Evaluates an arithmetic expression */
 
     let mut numbers = LinkedList::new();
@@ -171,7 +171,7 @@ fn float_comparison(op: String, x: rug::Float, y: rug::Float) -> Rc<Value> {
     return Value::Bool(result).rc();
 }
 
-pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
+pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &OldEnv) -> Rc<Value> {
     /* Compare two numeric values */
 
     crate::unroll_parameters!(
@@ -215,7 +215,7 @@ pub (in crate::eval) fn comparison(op: String, parameters: Rc<Value>, env: &Env)
 
 /* Boolean */
 
-pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &Env) -> Rc<Value> {
+pub (in crate::eval) fn boolean(op: String, parameters: Rc<Value>, env: &OldEnv) -> Rc<Value> {
     /* Boolean logic function (and, or, not, etc) */
 
     let parameter_list = parameters.to_list()

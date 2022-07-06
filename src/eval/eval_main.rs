@@ -41,12 +41,12 @@ macro_rules! unroll_parameters {
     };
 }
 
-pub (in crate::eval) type Env = HashMap<String, Rc<Value>>;
+pub (in crate::eval) type OldEnv = HashMap<String, Rc<Value>>;
 
 
 /* Generic helper functions */
 
-pub (in crate::eval) fn resolve_value<'a>(value: &'a Rc<Value>, env: &'a Env) -> &'a Rc<Value> {
+pub (in crate::eval) fn resolve_value<'a>(value: &'a Rc<Value>, env: &'a OldEnv) -> &'a Rc<Value> {
     /* If value is a Value::Name, it is reduced to the non-name value */
 
     if let Value::Name(name) = &**value {
@@ -167,7 +167,7 @@ fn no_continuation(args: &Rc<Value>, env: &mut HashMap<String, Rc<Value>>) -> Rc
 }
 
 
-pub fn eval(supplied: Rc<Value>, env: &mut Env) -> Rc<Value> {
+pub fn eval(supplied: Rc<Value>, env: &mut OldEnv) -> Rc<Value> {
    /* Evaluates an expression
     *
     * args
