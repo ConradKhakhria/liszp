@@ -2,7 +2,6 @@ mod read;
 mod eval;
 mod preproc;
 
-use std::collections::HashMap;
 use std::rc::Rc;
 
 fn main() {
@@ -19,7 +18,7 @@ fn main() {
     /* Read */
 
     let source = std::fs::read_to_string(filename.clone()).unwrap();
-    let values: Vec<Rc<read::Value>> = read::read(&source, filename)
+    let exprs: Vec<Rc<read::Value>> = read::read(&source, filename)
                                                 .iter()
                                                 .map(|v| preproc::preprocess(Rc::clone(v)))
                                                 .collect();
@@ -27,10 +26,10 @@ fn main() {
     /* eval */
 
     let mut results = Vec::new();
-    let mut globals = HashMap::new();
+    let mut env = eval::Env::new();
 
-    for value in values.iter() {
-        results.push(eval::eval(Rc::clone(value), &mut globals));
+    for value in exprs.iter() {
+        results.push(env.eval(value));
     }
 
     if display_evaluated {
@@ -43,6 +42,8 @@ fn main() {
 
     if display_namespace {
         println!("\n:: global namespace ::\n");
+
+        let globals = env.get_globals();
 
         for k in globals.keys() {
             println!("value '{}' = {}", k, globals.get(k).unwrap());
