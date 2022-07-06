@@ -1,5 +1,6 @@
 use crate::{
-    read::Value
+    read::Value,
+    refcount_list
 };
 use std::{
     collections::HashMap,
@@ -18,6 +19,15 @@ impl Env {
         }
     }
 
+
+    /* Getters */
+
+    pub fn get_globals(&self) -> &HashMap<String, Rc<Value>> {
+        &self.globals
+    }
+
+
+    /* Eval */
 
     pub fn eval(&mut self, expr: &Rc<Value>) -> Rc<Value> {
         /* Evaluates an expression in Env */
@@ -38,7 +48,7 @@ impl Env {
     }
 
 
-    /* Env-related built-in functions */
+    /* built-in functions */
 
     fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Defines a value in self.globals */
@@ -47,12 +57,36 @@ impl Env {
             panic!("Liszp: expected syntax (def <name> <value>)");
         }
 
-        if let Value::Name(name) = &*args[1] {
-            self.globals.insert(name.clone(), Rc::clone(&args[2]));
+        let continuation = &args[0];
+        let name = &args[1];
+        let value = &args[2];
+
+        if let Value::Name(name) = &**name {
+            self.globals.insert(name.clone(), Rc::clone(value));
         } else {
             panic!("Liszp: expected name in def expression");
         }
 
-        crate::refcount_list![ Rc::clone(&args[0]), Value::Nil.rc() ]
+        refcount_list![ Rc::clone(continuation), Value::Nil.rc() ]
+    }
+
+
+    fn print_value(&mut self, args: &Vec<Rc<Value>>, newline: bool) -> Rc<Value> {
+        /* Prints a value, optionally with a newline */
+
+        if args.len() != 2 {
+            panic!("Function print{} takes 1 argument only", if newline { "ln" } else { "" });
+        }
+
+        let continuation = &args[0];
+        let value = &args[1];
+
+        if newline {
+            println!("{}", value);
+        } else {
+            print!("{}", value);
+        }
+
+        refcount_list![ Rc::clone(continuation), Rc::clone(value) ]
     }
 }
