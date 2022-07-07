@@ -35,13 +35,11 @@ impl Env {
     fn resolve(&self, value: &Rc<Value>) -> Rc<Value> {
         /* If 'value' is a name, this substitutes it for the ident's value */
 
-        Rc::clone(
         if let Value::Name(name) = &**value {
-                self.globals.get(name).expect(format!("Unbound name '{}'", &name[1..]).as_str())
-            } else {
-                value
-            }
-        )
+            self.globals.get(name).expect(format!("Unbound name '{}'", &name[1..]).as_str()).clone()
+        } else {
+            value.clone()
+        }
     }
 
 
@@ -50,7 +48,7 @@ impl Env {
     pub fn eval(&mut self, expr: &Rc<Value>) -> Rc<Value> {
         /* Evaluates an expression in Env */
 
-        let mut value = Rc::clone(expr);
+        let mut value = expr.clone();
 
         while let Value::Cons { car: function, cdr: args  } = &*value {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
@@ -130,7 +128,7 @@ impl Env {
         }
 
         for i in 0..arg_names.len() {
-            hashmap.insert(arg_names[i].clone(), Rc::clone(&arg_values[i]));
+            hashmap.insert(arg_names[i].clone(), arg_values[i].clone());
         }
 
         hashmap
@@ -143,9 +141,9 @@ impl Env {
         match &**expr {
             Value::Name(name) => {
                 if let Some(value) = arg_map.get(name) {
-                    Rc::clone(value)
+                    value.clone()
                 } else {
-                    Rc::clone(expr)
+                    expr.clone()
                 }
             },
 
@@ -170,7 +168,7 @@ impl Env {
                 }
             }
 
-            _ => Rc::clone(expr)
+            _ => expr.clone()
         }
     }
 
@@ -204,12 +202,12 @@ impl Env {
         let value = &args[2];
 
         if let Value::Name(name) = &**name {
-            self.globals.insert(name.clone(), Rc::clone(value));
+            self.globals.insert(name.clone(), value.clone());
         } else {
             panic!("Liszp: expected name in def expression");
         }
 
-        refcount_list![ Rc::clone(continuation), Value::Nil.rc() ]
+        refcount_list![ continuation.clone(), Value::Nil.rc() ]
     }
 
 
@@ -263,7 +261,7 @@ impl Env {
             print!("{}", value);
         }
 
-        refcount_list![Rc::clone(continuation), value]
+        refcount_list![ continuation.clone(), value]
     }
 
 
