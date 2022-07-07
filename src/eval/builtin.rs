@@ -1,5 +1,6 @@
 use crate::read::Value;
 use crate::eval::eval_main::{OldEnv, resolve_value};
+use crate::refcount_list;
 use std::rc::Rc;
 
 
@@ -174,7 +175,7 @@ pub (in crate::eval) fn cons(parameters: &Rc<Value>, env: &OldEnv) -> Rc<Value> 
         })
     );
 
-    return crate::value_list![ &**k, &quote ];
+    return refcount_list![ Rc::clone(k), quote.rc() ]
 }
 
 
