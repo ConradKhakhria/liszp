@@ -57,6 +57,7 @@ impl Env {
 
             value = match function.name().as_str() {
                 "&define"         => self.define_value(&args),
+                "&equals?"        => self.values_are_equal(&args),
                 "&if"             => self.if_expr(&args),
                 "no-continuation" => self.no_continuation(&args),
                 "&print"          => self.print_value(&args, false),
@@ -263,5 +264,20 @@ impl Env {
         }
 
         refcount_list![Rc::clone(continuation), value]
+    }
+
+
+    fn values_are_equal(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Compares two values */
+
+        match args.as_slice() {
+            [continuation, x, y] => {
+                let result = Value::Bool(self.resolve(x) == self.resolve(y)).rc();
+
+                refcount_list![ continuation, &result ]
+            },
+
+            _ => panic!("Liszp: Function 'equals?' takes exactly 2 parameters")
+        }
     }
 }
