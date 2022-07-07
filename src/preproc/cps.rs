@@ -19,7 +19,7 @@ impl CPSConverter {
 
         CPSConverter {
             dfs_expr_components: Vec::new(),
-            continuation: Rc::clone(continuation)
+            continuation: continuation.clone()
         }
     }
 
@@ -32,7 +32,7 @@ impl CPSConverter {
         match &**expr {
             Value::Cons { car, cdr } => {
                 if car.name() == "&if" {
-                    Some(Rc::clone(expr))
+                    Some(expr.clone())
                 } else if vec![ "&lambda", "&quote" ].contains(&car.name().as_str()) {
                     None
                 } else if let Some(cond) = self.find_conditional(car) {
@@ -62,7 +62,7 @@ impl CPSConverter {
 
                 crate::refcount_list![
                     Value::Name("&if".into()).rc(),
-                    Rc::clone(condition),
+                    condition.clone(),
                     true_case,
                     false_case
                 ]
@@ -70,7 +70,7 @@ impl CPSConverter {
                 panic!("Liszp: expected syntax (if <cond> <true-case> <false-case>)");
             }
         } else {
-            Rc::clone(expr)
+            expr.clone()
         }
     }
 
@@ -109,7 +109,7 @@ impl CPSConverter {
         let false_case = &components[3];
 
         let conditional_expr = refcount_list![
-            Rc::clone(kwd_if),
+            kwd_if.clone(),
             Value::Name("@@k-if".into()).rc(),
             Self::convert_expr_with_continuation(true_case, &self.continuation),
             Self::convert_expr_with_continuation(false_case, &self.continuation)
@@ -142,14 +142,14 @@ impl CPSConverter {
                     xs
                 }
             },
-            None => return Rc::clone(expr)
+            None => return expr.clone()
         };
 
         match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
             "&quote"  => self.convert_quote(expr),
             _ => {
-                let mut component_labels = vec![ Rc::clone(&components[0]) ];
+                let mut component_labels = vec![ components[0].clone() ];
 
                 // depth-first collection of sub-expressions
                 for comp in components[1..].iter() {
@@ -173,13 +173,13 @@ impl CPSConverter {
             let args = if let Value::Cons {..} = &**args {
                 Value::cons(&lambda_continuation, args).rc()
             } else {
-                refcount_list![ Rc::clone(&lambda_continuation), Rc::clone(args) ]
+                refcount_list![ lambda_continuation.clone(), args.clone() ]
             };
 
             let body = Self::convert_expr_with_continuation(body, &lambda_continuation);
 
             refcount_list![
-                Rc::clone(kwd_lambda),
+                kwd_lambda.clone(),
                 args,
                 body
             ]
@@ -192,7 +192,7 @@ impl CPSConverter {
     pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Rc<Value> {
         /* Converts a quoted expression to continuation-passing style */
 
-        self.dfs_expr_components.push(Rc::clone(expr));
+        self.dfs_expr_components.push(expr.clone());
 
         Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc()
     }
@@ -201,7 +201,7 @@ impl CPSConverter {
     pub fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
         /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
 
-        let mut converted_expression = Rc::clone(&self.continuation);
+        let mut converted_expression = self.continuation.clone();
         let mut atomic = true;
 
         // We start at the last expression to be evaluated and build the previous continuations
@@ -229,7 +229,7 @@ impl CPSConverter {
         if atomic {
             refcount_list![
                 converted_expression,
-                Rc::clone(&original_value)
+                original_value.clone()
             ]
         } else {
             converted_expression

@@ -17,6 +17,6 @@ pub fn format_names(value: &Rc<Value>) -> Rc<Value> {
             })
         },
 
-        _ => Rc::clone(value)
+        _ => value.clone()
     }
 }
