@@ -5,30 +5,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use rug;
 
-
-#[macro_export]
-macro_rules! value_list {
-    [ $( $x:expr ),* ] => {
-        {
-            let mut cons = Value::Nil.rc();
-            let mut expr_list = std::collections::LinkedList::new();
-
-            $(
-                expr_list.push_front($x);
-            )*
-
-            for ex in expr_list.into_iter() {
-                cons = Rc::new(Value::Cons {
-                    car: ex.clone().rc(),
-                    cdr: cons
-                });
-            }
-
-            cons
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! refcount_list {
     [ $( $x:expr ),* ] => {
@@ -53,7 +29,7 @@ macro_rules! refcount_list {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Value {
     Name(String),
 
@@ -83,10 +59,10 @@ impl Value {
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
-        let mut cursor = &self.clone().rc();
+        let mut cursor = self;
         let mut length = -1;
 
-        while let Value::Cons { cdr, .. } = &**cursor {
+        while let Value::Cons { cdr, .. } = cursor {
             cursor  = &cdr; // ew
             length += 1
         }
@@ -167,16 +143,16 @@ impl Value {
     }
 
 
-    fn print_list(xs: Rc<Value>) -> String {
+    fn print_list(xs: &Value) -> String {
         let mut string = String::new();
-        let mut cursor = &xs;
+        let mut cursor = xs;
 
-        while let Value::Cons { car, cdr } = &**cursor {
+        while let Value::Cons { car, cdr } = cursor {
             string += &format!(" {}", *car)[..];
             cursor  = &cdr;
         }
 
-        match **cursor {
+        match cursor {
             Value::Nil => {},
             _ => string += &format!(" . {}", cursor)
         }
@@ -221,10 +197,10 @@ impl std::fmt::Display for Value {
                 format!("{}", b)
             },
             Value::Cons { .. } => {
-                format!("({})", Value::print_list(self.clone().rc()))
+                format!("({})", Value::print_list(self))
             },
             Value::Quote(xs) => {
-                format!("'({})", Value::print_list(Rc::clone(xs)))
+                format!("'({})", Value::print_list(xs))
             },
             Value::Nil => {
                 "nil".into()
