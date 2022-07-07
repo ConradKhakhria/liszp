@@ -1,7 +1,6 @@
 use crate::read::Value;
 use crate::refcount_list;
 
-use std::collections::LinkedList;
 use std::rc::Rc;
 
 struct CPSConverter {
