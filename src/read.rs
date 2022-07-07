@@ -191,7 +191,7 @@ impl std::fmt::Display for Value {
                 format!("{}", f)
             },
             Value::String(s) => {
-                format!("\"{}\"", s)
+                format!("{}", s)
             },
             Value::Bool(b) => {
                 format!("{}", b)
