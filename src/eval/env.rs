@@ -6,6 +6,7 @@ use std::{
     collections::HashMap,
     rc::Rc
 };
+use rug;
 
 
 type ValueMap = HashMap<String, Rc<Value>>;
@@ -57,6 +58,7 @@ impl Env {
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
                 "&if"             => self.if_expr(&args),
+                "&len"            => self.value_length(&args),
                 "no-continuation" => self.no_continuation(&args),
                 "&print"          => self.print_value(&args, false),
                 "&println"        => self.print_value(&args, true),
@@ -276,6 +278,22 @@ impl Env {
             },
 
             _ => panic!("Liszp: Function 'equals?' takes exactly 2 parameters")
+        }
+    }
+
+
+    fn value_length(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Gets the length of a value, if applicable */
+
+        match args.as_slice() {
+            [continuation, xs] => {
+                let length = rug::Integer::from(self.resolve(xs).len());
+                let value = Value::Integer(length).rc();
+
+                refcount_list![ continuation, &value ]
+            },
+
+            _ => panic!("Liszp: function 'len' takes exactly one value")
         }
     }
 }
