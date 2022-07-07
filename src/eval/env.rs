@@ -57,6 +57,7 @@ impl Env {
             value = match function.name().as_str() {
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
+                "&eval"           => self.eval_quoted(&args),
                 "&if"             => self.if_expr(&args),
                 "&len"            => self.value_length(&args),
                 "no-continuation" => self.no_continuation(&args),
@@ -211,6 +212,25 @@ impl Env {
         }
 
         refcount_list![ continuation.clone(), Value::Nil.rc() ]
+    }
+
+
+    fn eval_quoted(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Evaluates a quoted value */
+
+        match args.as_slice() {
+            [continuation, quoted_value] => {
+                let value = if let Value::Quote(v) = &*self.resolve(quoted_value) {
+                    v.clone()
+                } else {
+                    quoted_value.clone()
+                };
+
+                refcount_list![ continuation, &value ]
+            }
+
+            _ => panic!("Liszp: function 'quote' takes exactly one argument")
+        }
     }
 
 
