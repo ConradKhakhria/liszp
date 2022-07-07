@@ -104,7 +104,7 @@ impl Value {
         let mut list = vec![];
 
         while let Value::Cons { car, cdr } = cursor {
-            list.push(Rc::clone(car));
+            list.push(car.clone());
             cursor = &cdr;
 
             count += 1;
@@ -124,8 +124,8 @@ impl Value {
         /* Creates a cons pair */
 
         Value::Cons {
-            car: Rc::clone(car),
-            cdr: Rc::clone(cdr)
+            car: car.clone(),
+            cdr: cdr.clone()
         }
     }
 
@@ -165,14 +165,14 @@ impl Value {
         /* Returns self but with replacing a certain expression */
 
         if std::ptr::eq(&**expr, &**old) {
-            Rc::clone(new)
+            new.clone()
         } else if let Value::Cons { car, cdr} = &**expr {
             Rc::new(Value::Cons {
                 car: Self::substitute(car, old, new),
                 cdr: Self::substitute(cdr, old, new)
             })
         } else {
-            Rc::clone(expr)
+            expr.clone()
         }
     }
 }
@@ -392,7 +392,7 @@ pub fn read(source: &String, filename: String) -> Vec<Rc<Value>> {
         /* Recursively turns ValueStacks into Values (including LinkedList -> Value::Cons) */
 
         match stack {
-            ValueStack::Atom(atom) => Rc::clone(atom),
+            ValueStack::Atom(atom) => atom.clone(),
             ValueStack::List { vals, .. } => {
                 let mut list = Value::Nil.rc();
 
