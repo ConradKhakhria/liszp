@@ -55,6 +55,7 @@ impl Env {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function.name().as_str() {
+                "&cons"           => self.cons(&args),
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
                 "&eval"           => self.eval_quoted(&args),
@@ -193,6 +194,33 @@ impl Env {
 
 
     /* built-in functions */
+
+    fn cons(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Creates a cons pair */
+
+        match args.as_slice() {
+            [continuation, car, cdr] => {
+                let car = self.resolve(car);
+                let cdr = self.resolve(cdr);
+
+                let cons_pair = Value::Quote(
+                    Rc::new(Value::Cons {
+                        car,
+                        cdr: if let Value::Quote(v) = &*cdr {
+                            v.clone()
+                        } else {
+                            cdr
+                        }
+                    })
+                );
+
+                refcount_list![ continuation.clone(), cons_pair.rc() ]
+            }
+
+            _ => panic!("Liszp: function 'cons' expected 2 arguments")
+        }
+    }
+
 
     fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Defines a value in self.globals */
