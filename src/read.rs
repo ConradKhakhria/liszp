@@ -59,11 +59,13 @@ impl Value {
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
+        todo!();
+
         let mut cursor = self;
         let mut length = -1;
 
         while let Value::Cons { cdr, .. } = cursor {
-            cursor  = &cdr; // ew
+            cursor  = &**cdr; // ew
             length += 1
         }
 

@@ -62,6 +62,7 @@ impl Env {
                 "no-continuation" => self.no_continuation(&args),
                 "&print"          => self.print_value(&args, false),
                 "&println"        => self.print_value(&args, true),
+                "&quote"          => self.quote_value(&args),
                 _                 => self.evaluate_lambda_funcall(function, &args)
             }
         }
@@ -264,6 +265,21 @@ impl Env {
         }
 
         refcount_list![ continuation.clone(), value]
+    }
+
+
+    fn quote_value(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Quotes a value */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let quoted_value = Value::Quote(self.resolve(value)).rc();
+
+                refcount_list![ continuation, &quoted_value ]
+            }
+
+            _ => panic!("Liszp: function 'quote' takes exactly one value")
+        }
     }
 
 
