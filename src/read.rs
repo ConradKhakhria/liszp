@@ -59,7 +59,7 @@ impl Value {
     pub fn len(&self) -> i64 {
         /* Gets the length of a cons list */
 
-        todo!();
+        panic!("Function 'len' is broken and needs fixing");
 
         let mut cursor = self;
         let mut length = -1;
