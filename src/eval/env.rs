@@ -55,6 +55,7 @@ impl Env {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function.name().as_str() {
+                "&car"            => self.car(&args),
                 "&cons"           => self.cons(&args),
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
@@ -78,8 +79,9 @@ impl Env {
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Evaluates the calling of a non-built-in function */
 
-        let function_components = function.to_list()
-                                        .expect("Liszp: function should have syntax (lambda <args> <body>)");
+        let function_components = self.resolve(function)
+                                                   .to_list()
+                                                   .expect("Liszp: function should have syntax (lambda <args> <body>)");
 
         if function_components.len() != 3 {
             panic!("Liszp: function should have syntax (lambda <args> <body>)");
@@ -194,6 +196,31 @@ impl Env {
 
 
     /* built-in functions */
+
+    fn car(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Gets the car of a cons pair */
+
+        match args.as_slice() {
+            [continuation, xs] => {
+                let resolved = self.resolve(xs);
+
+                let xs = match &*resolved {
+                    Value::Quote(cons) => cons.clone(),
+                    _ => resolved
+                };
+
+                let car = match &*xs {
+                    Value::Cons { car, .. } => car,
+                    _ => panic!("Liszp: function 'cons' expected to receive cons pair")
+                };
+
+                refcount_list![ continuation, car ]
+            }
+
+            _ => panic!("Liszp: function 'car' takes 1 argument")
+        }
+    }
+
 
     fn cons(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Creates a cons pair */
