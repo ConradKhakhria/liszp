@@ -124,7 +124,7 @@ impl Env {
 
             Value::Nil => vec![],
 
-            _ => panic!("Liszp: Function expected a list of arguments or a single argument in ")
+            _ => panic!("Liszp: Function expected a list of arguments or a single argument in lambda expression")
         }
     }
 
