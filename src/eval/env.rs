@@ -54,6 +54,8 @@ impl Env {
         while let Value::Cons { car: function, cdr: args  } = &*value {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
+            println!("{}", &value);
+
             value = match function.name().as_str() {
                 "&car"            => self.car(&args),
                 "&cons"           => self.cons(&args),
@@ -85,6 +87,8 @@ impl Env {
 
         if function_components.len() != 3 {
             panic!("Liszp: function should have syntax (lambda <args> <body>)");
+        } else if function_components[0].name() != "&lambda" {
+            panic!("Liszp: attempt to call a non-function value");
         }
 
         let arg_names = Self::get_arg_names(&function_components[1]);
