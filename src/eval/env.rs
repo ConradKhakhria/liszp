@@ -64,6 +64,7 @@ impl Env {
                 "&if"             => self.if_expr(&args),
                 "&len"            => self.value_length(&args),
                 "no-continuation" => self.no_continuation(&args),
+                "&panic"          => self.panic(&args),
                 "&print"          => self.print_value(&args, false),
                 "&println"        => self.print_value(&args, true),
                 "&quote"          => self.quote_value(&args),
@@ -351,6 +352,16 @@ impl Env {
             self.resolve(&args[0])
         } else {
             unreachable!()
+        }
+    }
+
+
+    fn panic(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Panics */
+
+        match args.as_slice() {
+            [_, msg] => panic!("{}", msg),
+            _ => panic!("Liszp: expected syntax (panic <message>)")
         }
     }
 
