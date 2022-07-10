@@ -6,6 +6,7 @@ use std::{
     collections::HashMap,
     rc::Rc
 };
+use itertools::Itertools;
 use rug;
 
 
@@ -52,31 +53,34 @@ impl Env {
         let mut value = expr.clone();
 
         while let Value::Cons { car: function, cdr: args  } = &*value {
+            let function_name = function.name();
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
-            value = match function.name().as_str() {
-                "&bool?"          => self.value_is_bool(&args),
-                "&car"            => self.car(&args),
-                "&cdr"            => self.cdr(&args),
-                "&cons"           => self.cons(&args),
-                "&cons?"          => self.value_is_cons(&args),
-                "&define"         => self.define_value(&args),
-                "&equals?"        => self.values_are_equal(&args),
-                "&eval"           => self.eval_quoted(&args),
-                "&float"          => self.value_is_float(&args),
-                "&if"             => self.if_expr(&args),
-                "&int?"           => self.value_is_int(&args),
-                "&len"            => self.value_length(&args),
-                "&name?"          => self.value_is_name(&args),
-                "&nil?"           => self.value_is_nil(&args),
-                "no-continuation" => self.no_continuation(&args),
-                "&panic"          => self.panic(&args),
-                "&print"          => self.print_value(&args, false),
-                "&println"        => self.print_value(&args, true),
-                "&quote"          => self.quote_value(&args),
-                "&quote?"         => self.value_is_quote(&args),
-                "&str?"           => self.value_is_str(&args),
-                _                 => self.evaluate_lambda_funcall(function, &args)
+            value = match function_name.as_str() {
+                "&bool?"            => self.value_is_bool(&args),
+                "&car"              => self.car(&args),
+                "&cdr"              => self.cdr(&args),
+                "&cons"             => self.cons(&args),
+                "&cons?"            => self.value_is_cons(&args),
+                "&define"           => self.define_value(&args),
+                "&equals?"          => self.values_are_equal(&args),
+                "&eval"             => self.eval_quoted(&args),
+                "&float"            => self.value_is_float(&args),
+                "&if"               => self.if_expr(&args),
+                "&int?"             => self.value_is_int(&args),
+                "&len"              => self.value_length(&args),
+                "&name?"            => self.value_is_name(&args),
+                "&nil?"             => self.value_is_nil(&args),
+                "no-continuation"   => self.no_continuation(&args),
+                "&panic"            => self.panic(&args),
+                "&print"            => self.print_value(&args, false),
+                "&println"          => self.print_value(&args, true),
+                "&quote"            => self.quote_value(&args),
+                "&quote?"           => self.value_is_quote(&args),
+                "&str?"             => self.value_is_str(&args),
+                "&+"|"&-"|"&*"|"&/" => self.arithmetic_expression(&function_name, &args),
+                "&%"                => self.modulo(&args),
+                _                   => self.evaluate_lambda_funcall(function, &args)
             }
         }
 
@@ -632,6 +636,142 @@ impl Env {
             },
 
             _ => panic!("Liszp: function 'len' takes exactly one value")
+        }
+    }
+
+
+    /* Arithmetic */
+
+    fn arithmetic_expression(&self, op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Computes an arithmetic expression */
+
+        if args.len() < 2 {
+            panic!("Liszp: '{}' expression takes at least 1 argument", op);
+        }
+
+        let mut numbers = Vec::with_capacity(args.len());
+        let continuation = &args[0];
+        let mut result_is_float = false;
+
+        for arg in args.iter().dropping(1) {
+            let arg = self.resolve(arg);
+
+            match &*arg {
+                Value::Float(_) => {
+                    result_is_float = true;
+                    numbers.push(arg);
+                },
+
+                Value::Integer(_) => numbers.push(arg),
+
+                _ => panic!("Liszp: '{}' expression takes numeric arguments", op)
+            }
+        }
+
+        let result = if result_is_float {
+            Self::float_arithmetic(op, &numbers)
+        } else {
+            Self::integer_arithmetic(op, &numbers)
+        };
+
+        refcount_list![ continuation.clone(), result ]
+    }
+
+
+    fn float_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Evaluates an arithmetic expression of floats */
+
+        let mut result = match &*args[0] {
+            Value::Float(f) => f.clone(),
+            Value::Integer(i) => rug::Float::with_val(53, i),
+            _ => unreachable!()
+        };
+
+        macro_rules! reduce_over_operation {
+            { $action:tt } => {
+                for arg in args.iter().dropping(1) {
+                    match &**arg {
+                        Value::Float(f) => { result $action f },
+                        Value::Integer(i) => { result $action i },
+                        _ => unreachable!()
+                    }
+                }
+            }
+        }
+
+        match op.as_str() {
+            "&+" => reduce_over_operation!(+=),
+            "&-" => reduce_over_operation!(-=),
+            "&*" => reduce_over_operation!(*=),
+            "&/" => reduce_over_operation!(/=),
+            _    => unreachable!()
+        }
+
+        if op == "&-" && args.len() == 1 {
+            Value::Float(-result).rc()
+        } else {
+            Value::Float(result).rc()
+        }
+    }
+
+
+    fn integer_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Evaluates an arithmetic expression of integers */
+
+        let mut result = match &*args[0] {
+            Value::Integer(i) => i.clone(),
+            _ => unreachable!()
+        };
+
+        macro_rules! reduce_over_operation {
+            { $action:tt } => {
+                for arg in args.iter().dropping(1) {
+                    match &**arg {
+                        Value::Integer(i) => { result $action i },
+                        _ => unreachable!()
+                    }
+                }
+            }
+        }
+
+        match op.as_str() {
+            "&+" => reduce_over_operation!(+=),
+            "&-" => reduce_over_operation!(-=),
+            "&*" => reduce_over_operation!(*=),
+            "&/" => reduce_over_operation!(/=),
+            _    => unreachable!()
+        }
+
+        if op == "&-" && args.len() == 1 {
+            Value::Integer(-result).rc()
+        } else {
+            Value::Integer(result).rc()
+        }
+    }
+
+
+    fn modulo(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Takes the modulus of a number */
+
+        match args.as_slice() {
+            [continuation, dividend, divisor] => {
+                let dividend = self.resolve(dividend);
+                let divisor = self.resolve(divisor);
+
+                let result = match (&*dividend, &*divisor) {
+                    (Value::Float(x), Value::Float(y)) => Value::Float(x.clone() % y.clone()).rc(),
+
+                    (Value::Float(_), Value::Integer(_)) => panic!("Liszp: Cannot take the integer modulo of a float"),
+
+                    (Value::Integer(x), Value::Integer(y)) => Value::Integer(x.clone() % y.clone()).rc(),
+
+                    _ => unreachable!()
+                };
+
+                refcount_list![ continuation, &result ]
+            },
+
+            _ => panic!("Liszp: modulo expressions take exactly 2 arguments")
         }
     }
 }
