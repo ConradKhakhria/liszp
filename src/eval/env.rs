@@ -58,12 +58,13 @@ impl Env {
                 "&car"            => self.car(&args),
                 "&cdr"            => self.cdr(&args),
                 "&cons"           => self.cons(&args),
+                "&cons?"          => self.value_is_cons(&args),
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
                 "&eval"           => self.eval_quoted(&args),
                 "&if"             => self.if_expr(&args),
                 "&len"            => self.value_length(&args),
-                "&nil?"            => self.value_is_nil(&args),
+                "&nil?"           => self.value_is_nil(&args),
                 "no-continuation" => self.no_continuation(&args),
                 "&panic"          => self.panic(&args),
                 "&print"          => self.print_value(&args, false),
@@ -392,7 +393,10 @@ impl Env {
 
         match args.as_slice() {
             [continuation, value] => {
-                let quoted_value = Value::Quote(self.resolve(value)).rc();
+                let quoted_value = match &**value {
+                    Value::Quote(v) => value.clone(),
+                    _ => Value::Quote(self.resolve(value)).rc()
+                };
 
                 refcount_list![ continuation, &quoted_value ]
             }
@@ -417,12 +421,40 @@ impl Env {
     }
 
 
+    fn value_is_cons(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is a cons pair */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let value = match &**value {
+                    Value::Quote(v) => v,
+                    _ => value
+                };
+
+                let result = match &*self.resolve(value) {
+                    Value::Cons {..} => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'cons?' takes exactly one argument")
+        }
+    }
+
+
     fn value_is_nil(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Returns whether a value is nil */
 
         match args.as_slice() {
             [continuation, value] => {
-                let result = match &**value {
+                let value = match &**value {
+                    Value::Quote(v) => v,
+                    _ => value
+                };
+
+                let result = match &*self.resolve(value) {
                     Value::Nil => true,
                     _ => false
                 };
