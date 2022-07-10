@@ -56,6 +56,7 @@ impl Env {
 
             value = match function.name().as_str() {
                 "&car"            => self.car(&args),
+                "&cdr"            => self.cdr(&args),
                 "&cons"           => self.cons(&args),
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
@@ -212,18 +213,43 @@ impl Env {
 
                 let xs = match &*resolved {
                     Value::Quote(cons) => cons.clone(),
-                    _ => resolved
+                    _ => unreachable!()
                 };
 
-                let car = match &*xs {
-                    Value::Cons { car, .. } => car,
+                let quoted_car = match &*xs {
+                    Value::Cons { car, .. } => Value::Quote(car.clone()).rc(),
                     _ => panic!("Liszp: function 'cons' expected to receive cons pair")
                 };
 
-                refcount_list![ continuation, car ]
+                refcount_list![ continuation, &quoted_car ]
             }
 
             _ => panic!("Liszp: function 'car' takes 1 argument")
+        }
+    }
+
+
+    fn cdr(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Gets the cdr of a cons pair */
+
+        match args.as_slice() {
+            [continuation, xs] => {
+                let resolved = self.resolve(xs);
+
+                let xs = match &*resolved {
+                    Value::Quote(cons) => cons.clone(),
+                    _ => unreachable!()
+                };
+
+                let quoted_cdr = match &*xs {
+                    Value::Cons { cdr, .. } => Value::Quote(cdr.clone()).rc(),
+                    _ => panic!("Liszp: function 'cons' expected to receive cons pair")
+                };
+
+                refcount_list![ continuation, &quoted_cdr ]
+            },
+
+            _ => panic!("Liszp: function 'cdr' takes 1 argument")
         }
     }
 
