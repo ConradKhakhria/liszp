@@ -426,12 +426,14 @@ impl Env {
 
         match args.as_slice() {
             [continuation, value] => {
-                let value = match &**value {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
                     Value::Quote(v) => v,
-                    _ => value
+                    _ => &resolved
                 };
 
-                let result = match &*self.resolve(value) {
+                let result = match &**value {
                     Value::Cons {..} => true,
                     _ => false
                 };
@@ -445,16 +447,18 @@ impl Env {
 
 
     fn value_is_nil(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
-        /* Returns whether a value is nil */
+        /* Returns whether a value is a cons pair */
 
         match args.as_slice() {
             [continuation, value] => {
-                let value = match &**value {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
                     Value::Quote(v) => v,
-                    _ => value
+                    _ => &resolved
                 };
 
-                let result = match &*self.resolve(value) {
+                let result = match &**value {
                     Value::Nil => true,
                     _ => false
                 };
