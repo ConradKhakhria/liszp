@@ -55,6 +55,7 @@ impl Env {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function.name().as_str() {
+                "&bool?"          => self.value_is_bool(&args),
                 "&car"            => self.car(&args),
                 "&cdr"            => self.cdr(&args),
                 "&cons"           => self.cons(&args),
@@ -424,6 +425,31 @@ impl Env {
     }
 
 
+    fn value_is_bool(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is a bool */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
+                    Value::Quote(v) => v,
+                    _ => &resolved
+                };
+
+                let result = match &**value {
+                    Value::Bool(_) => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'bool?' takes exactly one argument")
+        }
+    }
+
+
     fn value_is_cons(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
         /* Returns whether a value is a cons pair */
 
@@ -544,7 +570,7 @@ impl Env {
                 refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
             },
 
-            _ => panic!("Liszp: function 'nil?' takes exactly one argument")
+            _ => panic!("Liszp: function 'str?' takes exactly one argument")
         }
     }
 
