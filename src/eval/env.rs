@@ -62,6 +62,7 @@ impl Env {
                 "&define"         => self.define_value(&args),
                 "&equals?"        => self.values_are_equal(&args),
                 "&eval"           => self.eval_quoted(&args),
+                "&float"          => self.value_is_float(&args),
                 "&if"             => self.if_expr(&args),
                 "&int?"           => self.value_is_int(&args),
                 "&len"            => self.value_length(&args),
@@ -443,6 +444,31 @@ impl Env {
             },
 
             _ => panic!("Liszp: function 'cons?' takes exactly one argument")
+        }
+    }
+
+
+    fn value_is_float(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is a float */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
+                    Value::Quote(v) => v,
+                    _ => &resolved
+                };
+
+                let result = match &**value {
+                    Value::Float(_) => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'float?' takes exactly one argument")
         }
     }
 
