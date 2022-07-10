@@ -72,6 +72,7 @@ impl Env {
                 "&print"          => self.print_value(&args, false),
                 "&println"        => self.print_value(&args, true),
                 "&quote"          => self.quote_value(&args),
+                "&str?"           => self.value_is_str(&args),
                 _                 => self.evaluate_lambda_funcall(function, &args)
             }
         }
@@ -499,7 +500,7 @@ impl Env {
 
 
     fn value_is_nil(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
-        /* Returns whether a value is a cons pair */
+        /* Returns whether a value is nil */
 
         match args.as_slice() {
             [continuation, value] => {
@@ -512,6 +513,31 @@ impl Env {
 
                 let result = match &**value {
                     Value::Nil => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'nil?' takes exactly one argument")
+        }
+    }
+
+
+    fn value_is_str(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is a str */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
+                    Value::Quote(v) => v,
+                    _ => &resolved
+                };
+
+                let result = match &**value {
+                    Value::String(_) => true,
                     _ => false
                 };
 
