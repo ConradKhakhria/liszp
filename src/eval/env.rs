@@ -67,12 +67,14 @@ impl Env {
                 "&if"             => self.if_expr(&args),
                 "&int?"           => self.value_is_int(&args),
                 "&len"            => self.value_length(&args),
+                "&name?"          => self.value_is_name(&args),
                 "&nil?"           => self.value_is_nil(&args),
                 "no-continuation" => self.no_continuation(&args),
                 "&panic"          => self.panic(&args),
                 "&print"          => self.print_value(&args, false),
                 "&println"        => self.print_value(&args, true),
                 "&quote"          => self.quote_value(&args),
+                "&quote?"         => self.value_is_quote(&args),
                 "&str?"           => self.value_is_str(&args),
                 _                 => self.evaluate_lambda_funcall(function, &args)
             }
@@ -546,6 +548,49 @@ impl Env {
             },
 
             _ => panic!("Liszp: function 'nil?' takes exactly one argument")
+        }
+    }
+
+
+    fn value_is_name(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is a name */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
+                    Value::Quote(v) => v,
+                    _ => &resolved
+                };
+
+                let result = match &**value {
+                    Value::Name(_) => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'name?' takes exactly one argument")
+        }
+    }
+
+
+    fn value_is_quote(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is quoted */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let result = match &*self.resolve(value) {
+                    Value::Quote(_) => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'quote?' takes exactly one argument")
         }
     }
 
