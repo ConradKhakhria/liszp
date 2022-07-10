@@ -63,6 +63,7 @@ impl Env {
                 "&eval"           => self.eval_quoted(&args),
                 "&if"             => self.if_expr(&args),
                 "&len"            => self.value_length(&args),
+                "&nil?"            => self.value_is_nil(&args),
                 "no-continuation" => self.no_continuation(&args),
                 "&panic"          => self.panic(&args),
                 "&print"          => self.print_value(&args, false),
@@ -412,6 +413,24 @@ impl Env {
             },
 
             _ => panic!("Liszp: Function 'equals?' takes exactly 2 parameters")
+        }
+    }
+
+
+    fn value_is_nil(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is nil */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let result = match &**value {
+                    Value::Nil => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'nil?' takes exactly one argument")
         }
     }
 
