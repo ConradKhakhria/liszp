@@ -63,6 +63,7 @@ impl Env {
                 "&equals?"        => self.values_are_equal(&args),
                 "&eval"           => self.eval_quoted(&args),
                 "&if"             => self.if_expr(&args),
+                "&int?"           => self.value_is_int(&args),
                 "&len"            => self.value_length(&args),
                 "&nil?"           => self.value_is_nil(&args),
                 "no-continuation" => self.no_continuation(&args),
@@ -442,6 +443,31 @@ impl Env {
             },
 
             _ => panic!("Liszp: function 'cons?' takes exactly one argument")
+        }
+    }
+
+
+    fn value_is_int(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Returns whether a value is an int */
+
+        match args.as_slice() {
+            [continuation, value] => {
+                let resolved = self.resolve(value);
+
+                let value = match &*resolved {
+                    Value::Quote(v) => v,
+                    _ => &resolved
+                };
+
+                let result = match &**value {
+                    Value::Integer(_) => true,
+                    _ => false
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            },
+
+            _ => panic!("Liszp: function 'int?' takes exactly one argument")
         }
     }
 
