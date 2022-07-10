@@ -54,8 +54,6 @@ impl Env {
         while let Value::Cons { car: function, cdr: args  } = &*value {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
-            println!("{}", &value);
-
             value = match function.name().as_str() {
                 "&car"            => self.car(&args),
                 "&cons"           => self.cons(&args),
@@ -170,7 +168,11 @@ impl Env {
 
                     arg_map.extend(shadowed_arguments);
 
-                    body_with_bound_arguments
+                    refcount_list![
+                        lambda_components[0].clone(),
+                        arg_component.clone(),
+                        body_with_bound_arguments
+                    ]
                 } else {
                     Rc::new(Value::Cons {
                         car: self.recursively_bind_args(car, arg_map),
