@@ -232,12 +232,19 @@ impl Env {
                     _ => unreachable!()
                 };
 
-                let quoted_car = match &*xs {
-                    Value::Cons { car, .. } => Value::Quote(car.clone()).rc(),
+                let car = match &*xs {
+                    Value::Cons { car, .. } => car,
                     _ => panic!("Liszp: function 'cons' expected to receive cons pair")
                 };
 
-                refcount_list![ continuation, &quoted_car ]
+                // If car is a name or cons pair, we must quote it again
+                let potentially_quoted_car = match &**car {
+                    Value::Cons {..} => Value::Quote(car.clone()).rc(),
+                    Value::Name(_)   => Value::Quote(car.clone()).rc(),
+                    _                => car.clone()
+                };
+
+                refcount_list![ continuation, &potentially_quoted_car ]
             }
 
             _ => panic!("Liszp: function 'car' takes 1 argument")
@@ -257,12 +264,19 @@ impl Env {
                     _ => unreachable!()
                 };
 
-                let quoted_cdr = match &*xs {
-                    Value::Cons { cdr, .. } => Value::Quote(cdr.clone()).rc(),
+                let cdr = match &*xs {
+                    Value::Cons { cdr, .. } => cdr,
                     _ => panic!("Liszp: function 'cons' expected to receive cons pair")
                 };
 
-                refcount_list![ continuation, &quoted_cdr ]
+                // If cdr is a name or cons pair, we must quote it again
+                let potentially_quoted_cdr = match &**cdr {
+                    Value::Cons {..} => Value::Quote(cdr.clone()).rc(),
+                    Value::Name(_)   => Value::Quote(cdr.clone()).rc(),
+                    _                => cdr.clone()
+                };
+
+                refcount_list![ continuation, &potentially_quoted_cdr ]
             },
 
             _ => panic!("Liszp: function 'cdr' takes 1 argument")
