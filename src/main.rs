@@ -1,6 +1,6 @@
 mod read;
 mod eval;
-mod preproc;
+mod preprocess;
 
 use std::rc::Rc;
 
@@ -20,7 +20,7 @@ fn main() {
     let source = std::fs::read_to_string(filename.clone()).unwrap();
     let exprs: Vec<Rc<read::Value>> = read::read(&source, filename)
                                                 .iter()
-                                                .map(|v| preproc::preprocess(Rc::clone(v)))
+                                                .map(|v| preprocess::preprocess(Rc::clone(v)))
                                                 .collect();
 
     /* eval */
