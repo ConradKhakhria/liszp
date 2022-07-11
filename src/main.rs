@@ -2,8 +2,6 @@ mod read;
 mod eval;
 mod preprocess;
 
-use std::rc::Rc;
-
 fn main() {
     /* Interface */
 
