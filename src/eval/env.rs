@@ -80,6 +80,8 @@ impl Env {
                 "&str?"             => self.value_is_str(&args),
                 "&+"|"&-"|"&*"|"&/" => self.arithmetic_expression(&function_name, &args),
                 "&%"                => self.modulo(&args),
+                "&and"|"&or"|"&xor" => self.binary_logical_operation(&function_name, &args),
+                "&not"              => self.logical_negation(&args),
                 _                   => self.evaluate_lambda_funcall(function, &args)
             }
         }
@@ -664,7 +666,7 @@ impl Env {
 
                 Value::Integer(_) => numbers.push(arg),
 
-                _ => panic!("Liszp: '{}' expression takes numeric arguments", op)
+                _ => panic!("Liszp: '{}' expression takes numeric arguments", &op[1..])
             }
         }
 
@@ -772,6 +774,58 @@ impl Env {
             },
 
             _ => panic!("Liszp: modulo expressions take exactly 2 arguments")
+        }
+    }
+
+
+    /* Logic */
+
+    fn binary_logical_operation(&self, op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Evaluates a binary logical operation */
+
+        match args.as_slice() {
+            [continuation, x, y] => {
+                let x = match &*self.resolve(x) {
+                    Value::Bool(b) => *b,
+                    _ => panic!("Liszp: {} expressions take boolean arguments", &op[1..])
+                };
+
+                let y = match &*self.resolve(y) {
+                    Value::Bool(b) => *b,
+                    _ => panic!("Liszp: {} expressions take boolean arguments", &op[1..])
+                };
+
+                let result = match op.as_str() {
+                    "&and" => x && y,
+                    "&or"  => x || y,
+                    "&xor" => x ^ y,
+                    _      => unreachable!()
+                };
+
+                refcount_list![ continuation.clone(), Value::Bool(result).rc() ]
+            }
+
+            _ => panic!("Liszp: {} expressions take exactly 2 arguments", &op[1..])
+        }
+    }
+
+
+    fn logical_negation(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Performs a logical not operation */
+
+        match args.as_slice() {
+            [continuation, x] => {
+                let x = match &*self.resolve(x) {
+                    Value::Bool(b) => *b,
+                    _ => panic!("Liszp: not expressions take a boolean argument")
+                };
+
+                let result = Value::Bool(!x).rc();
+
+                refcount_list![ continuation, &result ]
+            }
+
+            _ => panic!("Liszp: not expressions take exactly 1 argument")
         }
     }
 }
