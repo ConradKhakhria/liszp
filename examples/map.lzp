@@ -1,5 +1,5 @@
 (def map (lambda (xs f)
-    (if (null? xs)
+    (if (nil? xs)
         xs
         (cons (f (car xs)) (map (cdr xs) f)))))
 
