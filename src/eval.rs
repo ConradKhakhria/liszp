@@ -1,10 +1,15 @@
 use crate::{
-    read::Value,
+    read::{
+        read,
+        Value
+    },
+    preprocess::preprocess,
     refcount_list
 };
 use std::{
     collections::HashMap,
-    rc::Rc
+    path::Path,
+    rc::Rc, fmt::Display
 };
 use itertools::Itertools;
 use rug;
@@ -13,14 +18,16 @@ use rug;
 type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
-    globals: ValueMap
+    globals: ValueMap,
+    evaluated: Vec<Rc<Value>>
 }
 
 
 impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
-            globals: HashMap::new()
+            globals: HashMap::new(),
+            evaluated: vec![]
         }
     }
 
@@ -41,6 +48,28 @@ impl Evaluator {
             self.globals.get(name).expect(format!("Unbound name '{}'", &name[1..]).as_str()).clone()
         } else {
             value.clone()
+        }
+    }
+
+
+    pub fn display_evaluated(&self) {
+        /* Prints all recorded evaluated values */
+
+        println!("\n:: values ::\n");
+
+        for (i, v) in self.evaluated.iter().enumerate() {
+            println!("expr {} evaluates to {}", i, v);
+        }
+    }
+
+
+    pub fn display_namespace(&self) {
+        /* Prints all values in the global namespace */
+
+        println!("\n:: namespace ::\n");
+
+        for key in self.globals.keys() {
+            println!("value '{}' = {}", key, self.globals.get(key).unwrap());
         }
     }
 
@@ -88,6 +117,24 @@ impl Evaluator {
         }
 
         value
+    }
+
+
+    pub fn eval_file<P: AsRef<Path> + Display>(&mut self, filepath: P) {
+       /* Evaluates a source file */
+
+        let filename = filepath.to_string();
+
+        let source = std::fs::read_to_string(filepath)
+                        .expect(format!("Cannot open file '{}'", filename).as_str());
+        let read_exprs = read(&source, filename);
+
+        for expr in read_exprs.iter() {
+            let preprocessed = preprocess(expr.clone());
+            let evaluated = self.eval(&preprocessed);
+
+            self.evaluated.push(evaluated);
+        }
     }
 
 
