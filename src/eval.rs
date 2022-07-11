@@ -408,7 +408,7 @@ impl Env {
         match args.as_slice() {
             [continuation, value] => {
                 let quoted_value = match &**value {
-                    Value::Quote(v) => value.clone(),
+                    Value::Quote(_) => value.clone(),
                     _ => Value::Quote(self.resolve(value)).rc()
                 };
 
