@@ -62,7 +62,7 @@ impl Env {
                 "&cdr"              => self.cdr(&args),
                 "&cons"             => self.cons(&args),
                 "&cons?"            => self.value_is_cons(&args),
-                "&define"           => self.define_value(&args),
+                "&def"              => self.define_value(&args),
                 "&equals?"          => self.values_are_equal(&args),
                 "&eval"             => self.eval_quoted(&args),
                 "&float"            => self.value_is_float(&args),
