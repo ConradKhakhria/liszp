@@ -82,6 +82,8 @@ impl Env {
                 "&%"                => self.modulo(&args),
                 "&and"|"&or"|"&xor" => self.binary_logical_operation(&function_name, &args),
                 "&not"              => self.logical_negation(&args),
+                "&<"|"&>"|"&<="|
+                "&>="|"&=="|"&!="   => self.comparison(&function_name, &args),
                 _                   => self.evaluate_lambda_funcall(function, &args)
             }
         }
@@ -827,5 +829,81 @@ impl Env {
 
             _ => panic!("Liszp: not expressions take exactly 1 argument")
         }
+    }
+
+
+    /* Comparison */
+
+    fn comparison(&self, op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
+        /* Compares two values */
+
+        match args.as_slice() {
+            [continuation, x, y] => {
+                let x = self.resolve(x);
+                let y = self.resolve(y);
+
+                let result = match (&*x, &*y) {
+                    (Value::Integer(x), Value::Integer(y)) => {
+                        Self::integer_comparison(op, x, y)
+                    }
+
+                    (Value::Float(x), Value::Integer(y)) => {
+                        let y = rug::Float::with_val(53, y);
+
+                        Self::float_comparison(op, x, &y)
+                    }
+
+                    (Value::Integer(x), Value::Float(y)) => {
+                        let x = rug::Float::with_val(53, x);
+
+                        Self::float_comparison(op, &x, y)
+                    }
+
+                    (Value::Float(x), Value::Float(y)) => {
+                        Self::float_comparison(op, x, y)
+                    }
+
+                    _ => panic!("Liszp: {} expressions take two numeric values", &op[1..])
+                };
+
+                refcount_list![ continuation, &result ]
+            }
+
+            _ => panic!("Liszp: {} expressions take exactly 2 values", &op[1..])
+        }
+    }
+
+
+    fn float_comparison(op: &String, x: &rug::Float, y: &rug::Float) -> Rc<Value> {
+        /* Compares two floats */
+
+        let result = match op.as_str() {
+            "&==" => x == y,
+            "&!=" => x != y,
+            "&<"  => x < y,
+            "&>"  => x > y,
+            "&<=" => x <= y,
+            "&>=" => x >= y,
+            _     => unreachable!()
+        };
+
+        Value::Bool(result).rc()
+    }
+
+
+    fn integer_comparison(op: &String, x: &rug::Integer, y: &rug::Integer) -> Rc<Value> {
+        /* Compares two integers */
+
+        let result = match op.as_str() {
+            "&==" => x == y,
+            "&!=" => x != y,
+            "&<"  => x < y,
+            "&>"  => x > y,
+            "&<=" => x <= y,
+            "&>=" => x >= y,
+            _     => unreachable!()
+        };
+
+        Value::Bool(result).rc()
     }
 }
