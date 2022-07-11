@@ -12,14 +12,14 @@ use rug;
 
 type ValueMap = HashMap<String, Rc<Value>>;
 
-pub struct Env {
+pub struct Evaluator {
     globals: ValueMap
 }
 
 
-impl Env {
+impl Evaluator {
     pub fn new() -> Self {
-        Env {
+        Evaluator {
             globals: HashMap::new()
         }
     }

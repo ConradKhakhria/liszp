@@ -26,7 +26,7 @@ fn main() {
     /* eval */
 
     let mut results = Vec::new();
-    let mut env = eval::Env::new();
+    let mut env = eval::Evaluator::new();
 
     for value in exprs.iter() {
         results.push(env.eval(value));
