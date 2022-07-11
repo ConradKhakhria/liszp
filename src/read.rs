@@ -302,8 +302,8 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
         static ref REGEX: Regex = Regex::new(concat!(
             "#.*?\n|",
             r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
-            r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?]*|",
-            "\".*?\"|\'.*?\'|\n|,|!|",
+            r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
+            "\".*?\"|\'.*?\'|\n|,|",
             r"\(|\)|\[|\]|\{|\}"
         )).unwrap();
     }
