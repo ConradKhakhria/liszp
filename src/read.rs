@@ -56,26 +56,6 @@ impl Value {
 
     /* Methods */
 
-    pub fn len(&self) -> i64 {
-        /* Gets the length of a cons list */
-
-        panic!("Function 'len' is broken and needs fixing");
-
-        let mut cursor = self;
-        let mut length = -1;
-
-        while let Value::Cons { cdr, .. } = cursor {
-            cursor  = &**cdr; // ew
-            length += 1
-        }
-
-        if length > -1 {
-            return length + 1;
-        } else {
-            panic!("Attempt to get length of something that isn't a list");
-        }
-    }
-
 
     pub fn name(&self) -> String {
         /* if self = Value::Name(n) then n else String::new() */

@@ -68,7 +68,6 @@ impl Env {
                 "&float"            => self.value_is_float(&args),
                 "&if"               => self.if_expr(&args),
                 "&int?"             => self.value_is_int(&args),
-                "&len"              => self.value_length(&args),
                 "&name?"            => self.value_is_name(&args),
                 "&nil?"             => self.value_is_nil(&args),
                 "no-continuation"   => self.no_continuation(&args),
@@ -624,22 +623,6 @@ impl Env {
             },
 
             _ => panic!("Liszp: function 'str?' takes exactly one argument")
-        }
-    }
-
-
-    fn value_length(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
-        /* Gets the length of a value, if applicable */
-
-        match args.as_slice() {
-            [continuation, xs] => {
-                let length = rug::Integer::from(self.resolve(xs).len());
-                let value = Value::Integer(length).rc();
-
-                refcount_list![ continuation, &value ]
-            },
-
-            _ => panic!("Liszp: function 'len' takes exactly one value")
         }
     }
 
