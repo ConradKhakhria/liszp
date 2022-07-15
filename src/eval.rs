@@ -53,28 +53,6 @@ impl Evaluator {
     }
 
 
-    pub fn display_evaluated(&self) {
-        /* Prints all recorded evaluated values */
-
-        println!("\n:: values ::\n");
-
-        for (i, v) in self.evaluated.iter().enumerate() {
-            println!("expr {} evaluates to {}", i, v);
-        }
-    }
-
-
-    pub fn display_namespace(&self) {
-        /* Prints all values in the global namespace */
-
-        println!("\n:: namespace ::\n");
-
-        for key in self.globals.keys() {
-            println!("value '{}' = {}", key, self.globals.get(key).unwrap());
-        }
-    }
-
-
     /* Eval */
 
     pub fn eval(&mut self, expr: &Rc<Value>) -> Rc<Value> {
