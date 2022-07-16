@@ -636,11 +636,9 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
+                let value = match &**value {
                     Value::Quote(v) => v,
-                    _ => &resolved
+                    _ => value
                 };
 
                 let result = match &**value {
