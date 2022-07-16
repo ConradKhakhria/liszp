@@ -3,6 +3,8 @@ use crate::{
         read,
         Value
     },
+    error::Error,
+    new_error,
     preprocess::preprocess,
     refcount_list
 };
@@ -99,14 +101,14 @@ impl Evaluator {
     }
 
 
-    pub fn eval_file<P: AsRef<Path> + Display>(&mut self, filepath: P) {
+    pub fn eval_file<P: AsRef<Path> + Display>(&mut self, filepath: P) -> Result<(), Error> {
        /* Evaluates a source file */
 
         let filename = filepath.to_string();
 
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
-        let read_exprs = read(&source, filename);
+        let read_exprs = read(&source, filename)?;
 
         for expr in read_exprs.iter() {
             let preprocessed = preprocess(expr.clone());
@@ -114,6 +116,8 @@ impl Evaluator {
 
             self.evaluated.push(evaluated);
         }
+
+        Ok(())
     }
 
 
