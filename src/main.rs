@@ -1,9 +1,7 @@
-mod read;
 mod error;
 mod eval;
+mod read;
 mod preprocess;
-
-use std::io::Write;
 
 fn main() {
     /* Interface */
@@ -25,38 +23,15 @@ fn main() {
     match filename {
         Some(fname) => {
             if let Err(e) = evaluator.eval_file(fname) {
-                e.print();
+                e.println();
             }
         }
 
-        None => {
-            loop {
-                let input_string = repl_get_line();
-
-                match evaluator.eval_source_string(&input_string, "<repl>") {
-                    Ok(v) => println!("{}", v),
-                    Err(e) => {
-                        e.print();
-                    }
-                }
+        None => loop {
+            match evaluator.repl_iteration() {
+                Ok(value) => println!("{}", value),
+                Err(e) => e.println()
             }
         }
     }
-}
-
-
-fn repl_get_line() -> String {
-    /* Gets a line from stdin for the REPL */
-
-    let mut input_string = String::new();
-
-    let stdin = std::io::stdin();
-    let mut stdout = std::io::stdout();
-
-    print!("> ");
-    stdout.flush().expect("Liszp: failed to flush stdout");
-
-    stdin.read_line(&mut input_string).expect("Liszp: failed to read line from stdin");
-
-    input_string
 }
