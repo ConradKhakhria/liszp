@@ -34,7 +34,7 @@ macro_rules! new_error {
         Error::new($msg)
     };
 
-    ($msg:literal, $($elem:expr),*) => {
-        Error::new(format!($msg, $($elem),*))
+    ($msg:literal, $($format_parameter:expr),*) => {
+        Error::new(format!($msg, $($format_parameter),*))
     };
 }
