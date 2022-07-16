@@ -93,7 +93,7 @@ impl Evaluator {
                 "&not"              => self.logical_negation(&args)?,
                 "&<"|"&>"|"&<="|
                 "&>="|"&=="|"&!="   => self.comparison(&function_name, &args)?,
-                _                   => self.evaluate_lambda_funcall(function, &args),
+                _                   => self.evaluate_lambda_funcall(function, &args)?,
             }
         }
 
@@ -139,7 +139,7 @@ impl Evaluator {
 
     /* Non-built-in function evaluation */
 
-    fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Rc<Value> {
+    fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
         let function_components = self.resolve(function)
@@ -147,13 +147,13 @@ impl Evaluator {
                                                    .expect("Liszp: function should have syntax (lambda <args> <body>)");
 
         if function_components.len() != 3 {
-            panic!("Liszp: function should have syntax (lambda <args> <body>)");
+            return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into();
         } else if function_components[0].name() != "&lambda" {
-            panic!("Liszp: attempt to call a non-function value");
+            return new_error!("Liszp: attempt to call a non-function value").into();
         }
 
-        let arg_names = Self::get_arg_names(&function_components[1]);
-        let mut arg_map = Self::build_argument_hashmap(&arg_names, arg_values);
+        let arg_names = Self::get_arg_names(&function_components[1])?;
+        let mut arg_map = Self::build_argument_hashmap(&arg_names, arg_values)?;
 
         let function_body = &function_components[2];
 
@@ -161,7 +161,7 @@ impl Evaluator {
     }
 
 
-    fn get_arg_names(arg_component: &Rc<Value>) -> Vec<String> {
+    fn get_arg_names(arg_component: &Rc<Value>) -> Result<Vec<String>, Error> {
         /* Gets the list of argument names from the argument component */
 
         match &**arg_component {
@@ -172,95 +172,99 @@ impl Evaluator {
                 for v in values_list.iter() {
                     match &**v {
                         Value::Name(name) => names.push(name.clone()),
-                        _ => panic!("Liszp: Expected name in function argument")
+                        _ => return new_error!("Liszp: Expected name in function argument").into()
                     }
                 }
 
-                names
+                Ok(names)
             }
 
             Value::Name(name) => {
-                vec![ name.clone() ]
+                Ok(vec![ name.clone() ])
             }
 
-            Value::Nil => vec![],
+            Value::Nil => Ok(vec![]),
 
-            _ => panic!("Liszp: Function expected a list of arguments or a single argument in lambda expression")
+            _ => return new_error!("Liszp: Function expected a list of arguments or a single argument in lambda expression").into()
         }
     }
 
 
-    fn build_argument_hashmap(arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> ValueMap {
+    fn build_argument_hashmap(arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> Result<ValueMap, Error> {
         /* Builds a map from argument names to argument values */
 
         let mut hashmap = HashMap::new();
 
         if arg_names.len() != arg_values.len() {
-            panic!("Function takes {} arguments but received {}", arg_names.len(), arg_values.len());
+            return new_error!("Function takes {} arguments but received {}", arg_names.len(), arg_values.len()).into();
         }
 
         for i in 0..arg_names.len() {
             hashmap.insert(arg_names[i].clone(), arg_values[i].clone());
         }
 
-        hashmap
+        Ok(hashmap)
     }
 
 
-    fn recursively_bind_args(&self, expr: &Rc<Value>, arg_map: &mut ValueMap) -> Rc<Value> {
+    fn recursively_bind_args(&self, expr: &Rc<Value>, arg_map: &mut ValueMap) -> Result<Rc<Value>, Error> {
         /* Returns function_body but with argument names replaced with their values */
 
         match &**expr {
             Value::Name(name) => {
                 if let Some(value) = arg_map.get(name) {
-                    value.clone()
+                    Ok(value.clone())
                 } else {
-                    expr.clone()
+                    Ok(expr.clone())
                 }
             },
 
             Value::Cons { car, cdr } => {
                 if car.name() == "&lambda" {
-                    let lambda_components = expr.to_list().expect("Liszp: malformed lambda expression");
+                    let lambda_components = match expr.to_list() {
+                        Some(xs) => xs,
+                        _ => return new_error!("malformed lambda expression").into()
+                    };
+
                     let arg_component = &lambda_components[1];
                     let body_component = &lambda_components[2];
 
-                    let shadowed_arguments = Self::remove_shadowed_arguments(arg_component, arg_map);
+                    let shadowed_arguments = Self::remove_shadowed_arguments(arg_component, arg_map)?;
 
                     let body_with_bound_arguments = self.recursively_bind_args(body_component, arg_map);
 
                     arg_map.extend(shadowed_arguments);
 
-                    refcount_list![
+                    Ok(refcount_list![
                         lambda_components[0].clone(),
                         arg_component.clone(),
-                        body_with_bound_arguments
-                    ]
+                        body_with_bound_arguments?
+                    ])
                 } else {
-                    Rc::new(Value::Cons {
-                        car: self.recursively_bind_args(car, arg_map),
-                        cdr: self.recursively_bind_args(cdr, arg_map)
-                    })
+                    Ok(Rc::new(Value::Cons {
+                        car: self.recursively_bind_args(car, arg_map)?,
+                        cdr: self.recursively_bind_args(cdr, arg_map)?
+                    }))
                 }
             }
 
-            _ => expr.clone()
+            _ => Ok(expr.clone())
         }
     }
 
 
-    fn remove_shadowed_arguments(arg_component: &Rc<Value>, arg_map: &mut ValueMap) -> ValueMap {
+    fn remove_shadowed_arguments(arg_component: &Rc<Value>, arg_map: &mut ValueMap) -> Result<ValueMap, Error> {
         /* Removes any arguments from arg_map that are shadowed in lambda_components */
 
         let mut shadowed_args = HashMap::new();
 
-        for arg_name in Self::get_arg_names(arg_component) {
+        for arg_name in Self::get_arg_names(arg_component)? {
             if let Some(removed_value) = arg_map.remove(&arg_name) {
                 shadowed_args.insert(arg_name, removed_value);
             }
         }
 
-        shadowed_args
+        Ok(shadowed_args)
     }
 
 
