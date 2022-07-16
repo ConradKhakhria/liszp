@@ -1,4 +1,5 @@
 mod read;
+mod error;
 mod eval;
 mod preprocess;
 
