@@ -30,6 +30,10 @@ impl<T> Into<Result<T, Error>> for Error {
 
 #[macro_export]
 macro_rules! new_error {
+    ($msg:literal) => {
+        Error::new($msg)
+    };
+
     ($msg:literal, $($elem:expr),*) => {
         Error::new(format!($msg, $($elem),*))
     };
