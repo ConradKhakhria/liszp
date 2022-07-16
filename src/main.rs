@@ -17,32 +17,42 @@ fn main() {
     }
 
     let mut evaluator = eval::Evaluator::new();
-    let stdin = std::io::stdin();
-    let mut stdout = std::io::stdout();
 
     match filename {
-        Some(fname) => evaluator.eval_file(fname),
+        Some(fname) => {
+            if let Err(e) = evaluator.eval_file(fname) {
+                e.print();
+            }
+        }
 
-        None => loop {
-            let mut input_string = String::new();
+        None => {
+            loop {
+                let input_string = repl_get_line();
 
-            print!("> ");
-            stdout.flush().expect("some error message");
-
-            stdin.read_line(&mut input_string).expect("Liszp: failed to read line from stdin");
-
-            match read::read(&input_string, "<repl>".into()).map(|v| v.as_slice()) {
-                Ok([expr]) => {
-                    let preprocessed = preprocess::preprocess(expr.clone());
-                    println!("{}", evaluator.eval(&preprocessed));
-                },
-
-                Err(e) => {
-                    e.print();
+                match evaluator.eval_source_string(&input_string, "<repl>") {
+                    Ok(v) => println!("{}", v),
+                    Err(e) => {
+                        e.print();
+                    }
                 }
-
-                _ => panic!("Liszp: repl can only read one expr at a time")
             }
         }
     }
+}
+
+
+fn repl_get_line() -> String {
+    /* Gets a line from stdin for the REPL */
+
+    let mut input_string = String::new();
+
+    let stdin = std::io::stdin();
+    let mut stdout = std::io::stdout();
+
+    print!("> ");
+    stdout.flush().expect("Liszp: failed to flush stdout");
+
+    stdin.read_line(&mut input_string).expect("Liszp: failed to read line from stdin");
+
+    input_string
 }
