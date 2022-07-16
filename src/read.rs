@@ -1,3 +1,8 @@
+use crate::{
+    error::Error,
+    new_error
+};
+
 use std::collections::LinkedList;
 use std::rc::Rc;
 
@@ -210,6 +215,15 @@ impl PartialEq for Value {
 }
 
 
+impl<T> Into<Result<Value, T>> for Value {
+    fn into(self) -> Result<Value, T> {
+        /* Wraps self in a result */
+
+        Ok(self)
+    }
+}
+
+
 #[derive(Debug)]
 enum ValueStack {
     Atom(Rc<Value>),
@@ -220,7 +234,7 @@ enum ValueStack {
     }
 }
 
-fn read_atom(string: String) -> ValueStack {
+fn read_atom(string: String) -> Result<ValueStack, Error> {
     /* Convets the source string of an atomic value into a Value */
 
     let value = match (&string[..], string.chars().next().unwrap()) {
@@ -231,7 +245,7 @@ fn read_atom(string: String) -> ValueStack {
             match (parse_int, parse_flt) {
                 (Ok(i), _) => Value::Integer(rug::Integer::from(i)),
                 (_, Ok(f)) => Value::Float(rug::Float::with_val(53, f)),
-                _ => panic!("Liszp: could not parse '{}' as an integer or a float", string)
+                _ => return new_error!("could not parse '{}' as an integer or a float", string).into()
             }
         },
 
@@ -244,11 +258,11 @@ fn read_atom(string: String) -> ValueStack {
         _ => Value::Name(string)
     };
 
-    return ValueStack::Atom(value.rc());
+    Ok(ValueStack::Atom(value.rc()))
 }
 
 
-fn read_nested_lists(source: &String, filename: String) -> ValueStack {
+fn read_nested_lists(source: &String, filename: String) -> Result<ValueStack, Error> {
    /* O(n) nested list parser
     *
     * This function converts a source string into a 'ValueStack', which is
@@ -264,17 +278,9 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
     let mut line_number = 0;
     let mut column_number = 0;
 
-    let rnl_err = |i| format!("internal error in read_nested_lists() :: {}", i);
-
-    macro_rules! error {
+    macro_rules! error_with_reader_position {
         ($msg:literal, $( $binding:expr ),*) => {
-            panic!(
-                "Liszp: syntax error in {}:{}:{}\n{}",
-                filename,
-                line_number,
-                column_number,
-                format!($msg, $($binding,)*)
-            )
+            new_error!("syntax error in {}:{}:{}\n{}", filename, line_number, column_number, format!($msg, $($binding,)*))
         };
     }
 
@@ -318,9 +324,9 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
             },
 
             ')'|'}'|']' => {
-                let (lvals, ldelim) = match stack.pop_back().expect(&rnl_err(1)[..]) {
+                let (lvals, ldelim) = match stack.pop_back().expect("Liszp: unreachable error 1") {
                     ValueStack::List { vals, delim } => (vals, delim),
-                    ValueStack::Atom(_) => error!("{}", rnl_err(3))
+                    ValueStack::Atom(_) => unreachable!()
                 };
 
                 let expected = match ldelim {
@@ -331,43 +337,44 @@ fn read_nested_lists(source: &String, filename: String) -> ValueStack {
 
                 if first_char != expected {
                     if stack.len() == 0 {
-                        error!("unexpected closing bracket '{}'", first_char);
+                        error_with_reader_position!("unexpected closing bracket '{}'", first_char);
                     } else {
-                        error!(
+                        error_with_reader_position!(
                             "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
                             ldelim, expected, first_char
                         );
                     }
                 }
 
-                if let ValueStack::List { vals, .. } = stack.back_mut().expect(&rnl_err(2)[..]) {
-                    vals.push_back(ValueStack::List { vals: lvals, delim: ldelim });
-                } else {
-                    panic!("{}", rnl_err(4));
+                match stack.back_mut().expect("Liszp: unreachable error 2") {
+                    ValueStack::List { vals, .. } => {
+                        vals.push_back(ValueStack::List { vals: lvals, delim: ldelim });
+                    },
+                    _ => unreachable!()
                 }
 
                 column_number += 1;
             },
 
             _ => {
-                let atom = read_atom(expr_str.into());
+                let atom = read_atom(expr_str.into())?;
 
-                match stack.back_mut().expect(&rnl_err(5)[..]) {
+                match stack.back_mut().expect("Liszp: unreachable error 3") {
                     ValueStack::List { vals, .. } => {
                         vals.push_back(atom);
                         column_number += expr_str.len();
                     },
-                    _ => panic!("{}", rnl_err(6))
+                    _ => unreachable!()
                 };
             }
         }
     }
 
-    return stack.pop_front().unwrap();
+    Ok(stack.pop_front().unwrap())
 }
 
 
-pub fn read(source: &String, filename: String) -> Vec<Rc<Value>> {
+pub fn read(source: &String, filename: String) -> Result<Vec<Rc<Value>>, Error> {
    /* Reads a source string into an array of Values */
 
     fn rec_read(stack: &ValueStack) -> Rc<Value> {
@@ -390,10 +397,10 @@ pub fn read(source: &String, filename: String) -> Vec<Rc<Value>> {
         }
     }
 
-    let values = match read_nested_lists(source, filename) {
+    let values = match read_nested_lists(source, filename)? {
         ValueStack::List { vals, .. } => vals,
-        _ => panic!("Liszp: internal error in function read() :: 1")
+        _ => unreachable!()
     };
 
-    return values.iter().map(rec_read).collect();
+    Ok(values.iter().map(rec_read).collect())
 }
