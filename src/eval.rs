@@ -121,6 +121,22 @@ impl Evaluator {
     }
 
 
+    pub fn eval_source_string<S: Into<String>>(&mut self, source: &String, filename: S) -> Result<Rc<Value>, Error> {
+        /* Evaluates a source string into one value */
+
+        let read_result = read(source, filename.into())?;
+
+        let expr = match read_result.as_slice() {
+            [x] => x,
+            xs => return new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
+        };
+
+        let preprocessed = preprocess(expr.clone());
+
+        Ok(self.eval(&preprocessed))
+    }
+
+
     /* Non-built-in function evaluation */
 
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Rc<Value> {
