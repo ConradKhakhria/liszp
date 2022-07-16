@@ -17,3 +17,20 @@ impl Error {
         self
     }
 }
+
+
+impl<T> Into<Result<T, Error>> for Error {
+    fn into(self) -> Result<T, Error> {
+        /* Turns Error into a result */
+
+        Err(self)
+    }
+}
+
+
+#[macro_export]
+macro_rules! new_error {
+    ($msg:literal, $($elem:expr),*) => {
+        Error::new(format!($msg, $($elem),*))
+    };
+}
