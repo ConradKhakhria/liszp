@@ -12,7 +12,11 @@ fn main() {
 
     for arg in std::env::args() {
         if arg.ends_with(".lzp") {
-            filename = Some(arg);
+            if let Some(_) = filename {
+                panic!("Liszp: you must provide at most one file");
+            } else {
+                filename = Some(arg);
+            }
         }
     }
 
