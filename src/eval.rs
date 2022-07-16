@@ -44,13 +44,16 @@ impl Evaluator {
 
     /* Env-related functions */
 
-    fn resolve(&self, value: &Rc<Value>) -> Rc<Value> {
+    fn resolve(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* If 'value' is a name, this substitutes it for the ident's value */
 
         if let Value::Name(name) = &**value {
-            self.globals.get(name).expect(format!("Unbound name '{}'", &name[1..]).as_str()).clone()
+            match self.globals.get(name) {
+                Some(v) => Ok(v.clone()),
+                None => new_error!("unbound name '{}'", &name[1..]).into()
+            }
         } else {
-            value.clone()
+            Ok(value.clone())
         }
     }
 
@@ -80,7 +83,7 @@ impl Evaluator {
                 "&int?"             => self.value_is_int(&args)?,
                 "&name?"            => self.value_is_name(&args)?,
                 "&nil?"             => self.value_is_nil(&args)?,
-                "no-continuation"   => self.no_continuation(&args),
+                "no-continuation"   => self.no_continuation(&args)?,
                 "&panic"            => self.panic(&args)?,
                 "&print"            => self.print_value(&args, false)?,
                 "&println"          => self.print_value(&args, true)?,
@@ -142,7 +145,7 @@ impl Evaluator {
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
-        let function_components = self.resolve(function)
+        let function_components = self.resolve(function)?
                                                    .to_list()
                                                    .expect("Liszp: function should have syntax (lambda <args> <body>)");
 
@@ -275,7 +278,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, xs] => {
-                let resolved = self.resolve(xs);
+                let resolved = self.resolve(xs)?;
 
                 let xs = match &*resolved {
                     Value::Quote(cons) => cons.clone(),
@@ -307,7 +310,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, xs] => {
-                let resolved = self.resolve(xs);
+                let resolved = self.resolve(xs)?;
 
                 let xs = match &*resolved {
                     Value::Quote(cons) => cons.clone(),
@@ -339,8 +342,8 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, car, cdr] => {
-                let car = self.resolve(car);
-                let cdr = self.resolve(cdr);
+                let car = self.resolve(car)?;
+                let cdr = self.resolve(cdr)?;
 
                 let cons_pair = Value::Quote(
                     Rc::new(Value::Cons {
@@ -392,7 +395,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, quoted_value] => {
-                let value = if let Value::Quote(v) = &*self.resolve(quoted_value) {
+                let value = if let Value::Quote(v) = &*self.resolve(quoted_value)? {
                     v.clone()
                 } else {
                     quoted_value.clone()
@@ -413,9 +416,9 @@ impl Evaluator {
             return new_error!("Liszp: if expression has syntax (if <condition> <true case> <false case>)").into();
         }
 
-        let cond = self.resolve(&args[0]);
-        let true_case = self.resolve(&args[1]);
-        let false_case = self.resolve(&args[2]);
+        let cond = self.resolve(&args[0])?;
+        let true_case = self.resolve(&args[1])?;
+        let false_case = self.resolve(&args[2])?;
 
         if let Value::Bool(b) = &*cond {
             if *b {
@@ -429,7 +432,7 @@ impl Evaluator {
     }
 
 
-    fn no_continuation(&self, args: &Vec<Rc<Value>>) -> Rc<Value> {
+    fn no_continuation(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* The final stage of a trampolined evaluation */
 
         if args.len() == 1 {
@@ -458,7 +461,7 @@ impl Evaluator {
         }
 
         let continuation = &args[0];
-        let value = self.resolve(&args[1]);
+        let value = self.resolve(&args[1])?;
 
         if newline {
             println!("{}", value);
@@ -477,7 +480,7 @@ impl Evaluator {
             [continuation, value] => {
                 let quoted_value = match &**value {
                     Value::Quote(_) => value.clone(),
-                    _ => Value::Quote(self.resolve(value)).rc()
+                    _ => Value::Quote(self.resolve(value)?).rc()
                 };
 
                 Ok(refcount_list![ continuation, &quoted_value ])
@@ -493,7 +496,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, x, y] => {
-                let result = Value::Bool(self.resolve(x) == self.resolve(y)).rc();
+                let result = Value::Bool(self.resolve(x)? == self.resolve(y)?).rc();
 
                 Ok(refcount_list![ continuation, &result ])
             },
@@ -508,7 +511,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -533,7 +536,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -558,7 +561,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -583,7 +586,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -608,7 +611,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -633,7 +636,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -658,7 +661,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let result = match &*self.resolve(value) {
+                let result = match &*self.resolve(value)? {
                     Value::Quote(_) => true,
                     _ => false
                 };
@@ -676,7 +679,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, value] => {
-                let resolved = self.resolve(value);
+                let resolved = self.resolve(value)?;
 
                 let value = match &*resolved {
                     Value::Quote(v) => v,
@@ -710,7 +713,7 @@ impl Evaluator {
         let mut result_is_float = false;
 
         for arg in args.iter().dropping(1) {
-            let arg = self.resolve(arg);
+            let arg = self.resolve(arg)?;
 
             match &*arg {
                 Value::Float(_) => {
@@ -811,8 +814,8 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, dividend, divisor] => {
-                let dividend = self.resolve(dividend);
-                let divisor = self.resolve(divisor);
+                let dividend = self.resolve(dividend)?;
+                let divisor = self.resolve(divisor)?;
 
                 let result = match (&*dividend, &*divisor) {
                     (Value::Float(x), Value::Float(y)) => Value::Float(x.clone() % y.clone()).rc(),
@@ -839,12 +842,12 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, x, y] => {
-                let x = match &*self.resolve(x) {
+                let x = match &*self.resolve(x)? {
                     Value::Bool(b) => *b,
                     _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
                 };
 
-                let y = match &*self.resolve(y) {
+                let y = match &*self.resolve(y)? {
                     Value::Bool(b) => *b,
                     _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
                 };
@@ -869,7 +872,7 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, x] => {
-                let x = match &*self.resolve(x) {
+                let x = match &*self.resolve(x)? {
                     Value::Bool(b) => *b,
                     _ => return new_error!("Liszp: not expressions take a boolean argument").into()
                 };
@@ -891,8 +894,8 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, x, y] => {
-                let x = self.resolve(x);
-                let y = self.resolve(y);
+                let x = self.resolve(x)?;
+                let y = self.resolve(y)?;
 
                 let result = match (&*x, &*y) {
                     (Value::Integer(x), Value::Integer(y)) => {
