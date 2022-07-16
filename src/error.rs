@@ -9,7 +9,7 @@ impl Error {
     }
 
 
-    pub fn println(self) {
+    pub fn println(&self) {
         /* Displays an error */
 
         eprintln!("Liszp: {}", self.0);
