@@ -10,8 +10,10 @@ use crate::{
 };
 use std::{
     collections::HashMap,
+    fmt::Display,
+    io::Write,
     path::Path,
-    rc::Rc, fmt::Display
+    rc::Rc,
 };
 use itertools::Itertools;
 use rug;
@@ -137,6 +139,69 @@ impl Evaluator {
         let preprocessed = preprocess(expr.clone());
 
         self.eval(&preprocessed)
+    }
+
+
+    /* Repl functions */
+
+
+    pub fn repl_iteration(&mut self) -> Result<Rc<Value>, Error> {
+        /* Performs one iteration of the repl */
+
+        let mut input_string = Self::get_line_from_stdin(true)?;
+
+        while !Self::brackets_are_balanced(&input_string)? {
+            input_string = format!("{}{}", input_string, Self::get_line_from_stdin(false)?);
+        }
+
+        self.eval_source_string(&input_string, "<repl>")
+    }
+
+
+    fn get_line_from_stdin(display_prompt: bool) -> Result<String, Error> {
+        /* Reads a line from stdin */
+
+        let mut input_string = String::new();
+
+        let stdin = std::io::stdin();
+        let mut stdout = std::io::stdout();
+    
+        if display_prompt {
+            print!("> ");
+        } else {
+            print!("  ");
+        }
+
+        if let Err(_) = stdout.flush() {
+            return new_error!("failed to flush stdout").into();
+        }
+    
+        if let Err(_) = stdin.read_line(&mut input_string) {
+            return new_error!("failed to read line from stdin").into();
+        }
+
+        Ok(input_string)
+    }
+
+
+    fn brackets_are_balanced(string: &String) -> Result<bool, Error> {
+        /* Returns whether a string has balanced brackets */
+
+        let mut bracket_depth = 0;
+
+        for c in string.chars() {
+            match c {
+                '('|'['|'{' => bracket_depth += 1,
+                ')'|']'|'}' => bracket_depth -= 1,
+                _ => {}
+            }
+        }
+
+        if bracket_depth < 0 {
+            new_error!("input string has more closing braces than opening braces").into()
+        } else {
+            Ok(bracket_depth == 0)
+        }
     }
 
 
