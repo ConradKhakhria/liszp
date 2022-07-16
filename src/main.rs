@@ -31,14 +31,18 @@ fn main() {
 
             stdin.read_line(&mut input_string).expect("Liszp: failed to read line from stdin");
 
-            let expr = match read::read(&input_string, "<repl>".into()).as_slice() {
-                [e] => e.clone(),
+            match read::read(&input_string, "<repl>".into()).map(|v| v.as_slice()) {
+                Ok([expr]) => {
+                    let preprocessed = preprocess::preprocess(expr.clone());
+                    println!("{}", evaluator.eval(&preprocessed));
+                },
+
+                Err(e) => {
+                    e.print();
+                }
+
                 _ => panic!("Liszp: repl can only read one expr at a time")
-            };
-
-            let preprocessed = preprocess::preprocess(expr);
-
-            println!("{}", evaluator.eval(&preprocessed));
+            }
         }
     }
 }
