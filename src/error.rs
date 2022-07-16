@@ -9,12 +9,10 @@ impl Error {
     }
 
 
-    pub fn print(self) -> Self {
-        /* Displays an error and then returns it immediately */
+    pub fn println(self) {
+        /* Displays an error */
 
         eprintln!("Liszp: {}", self.0);
-
-        self
     }
 }
 
