@@ -2,6 +2,7 @@ mod error;
 mod eval;
 mod read;
 mod preprocess;
+mod value;
 
 fn main() {
     /* Interface */
