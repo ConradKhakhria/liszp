@@ -4,7 +4,6 @@ use crate::{
     value::Value
 };
 
-use std::collections::LinkedList;
 use std::rc::Rc;
 
 use lazy_static::lazy_static;
@@ -212,7 +211,7 @@ impl Reader {
         match value_stack {
             ValueStack::Atom(atom) => atom.clone(),
 
-            ValueStack::List { vals, delim } => {
+            ValueStack::List { vals, .. } => {
                 let mut list = Value::Nil.rc();
 
                 for v in vals.iter().rev() {
