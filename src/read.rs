@@ -12,184 +12,215 @@ use regex::Regex;
 use rug;
 
 
-
-#[derive(Debug)]
+// for use in the bracket collection algorithm
 enum ValueStack {
     Atom(Rc<Value>),
 
     List {
-        vals: LinkedList<ValueStack>,
+        vals: Vec<ValueStack>,
         delim: char
     }
 }
 
-fn read_atom(string: String) -> Result<ValueStack, Error> {
-    /* Convets the source string of an atomic value into a Value */
 
-    let value = match (&string[..], string.chars().next().unwrap()) {
-        (_, '0'..='9') => {
-            let parse_int = rug::Integer::parse(&string);
-            let parse_flt = rug::Float::parse(&string);
-
-            match (parse_int, parse_flt) {
-                (Ok(i), _) => Value::Integer(rug::Integer::from(i)),
-                (_, Ok(f)) => Value::Float(rug::Float::with_val(53, f)),
-                _ => return new_error!("could not parse '{}' as an integer or a float", string).into()
-            }
-        },
-
-        ("true"|"false", _) => Value::Bool(&string[..] == "true"),
-
-        (_, '"') => Value::String(string),
-
-        ("nil"|"null", _) => Value::Nil,
-
-        _ => Value::Name(string)
-    };
-
-    Ok(ValueStack::Atom(value.rc()))
+pub struct Reader {
+    filename: String,
+    line_number: usize,
+    column_number: usize,
 }
 
 
-fn read_nested_lists(source: &String, filename: String) -> Result<ValueStack, Error> {
-   /* O(n) nested list parser
-    *
-    * This function converts a source string into a 'ValueStack', which is
-    * either an atomic Value or a LinkedList of ValueStacks. After the entire
-    * source string has been read, the ValueStack can be converted into Values.
-    */
+impl Reader {
+    pub fn new(filename: String) -> Self {
+        /* Creates a new Reader */
 
-    let base_value = ValueStack::List { vals: LinkedList::new(), delim: '?' };
-    let mut stack = LinkedList::new();
-
-    stack.push_back(base_value);
-
-    let mut line_number = 0;
-    let mut column_number = 0;
-
-    macro_rules! error_with_reader_position {
-        ($msg:literal, $( $binding:expr ),*) => {
-            new_error!("syntax error in {}:{}:{}\n{}", filename, line_number, column_number, format!($msg, $($binding,)*))
-        };
-    }
-
-    lazy_static! {
-        static ref REGEX: Regex = Regex::new(concat!(
-            "#.*?\n|",
-            r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
-            r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-            "\".*?\"|\'.*?\'|\n|,|",
-            r"\(|\)|\[|\]|\{|\}"
-        )).unwrap();
-    }
-
-    for ex in REGEX.find_iter(&source) {
-        let expr_str = ex.as_str();
-
-        if expr_str == "" {
-            continue;
+        Reader {
+            filename,
+            line_number: 1,
+            column_number: 1,
         }
+    }
 
-        let first_char = expr_str.chars().next().unwrap();
 
-        match first_char {
-            '#' => {},
+    pub fn read(&mut self, source: &String) -> Result<Vec<Rc<Value>>, Error> {
+        /* Reads a source string into a list of Values */
 
-            ' '  => column_number += 1,
+        self.line_number = 1;
+        self.column_number = 1;
 
-            '\n' => {
-                column_number = 1;
-                line_number  += 1;
+        match self.read_nested_lists(source)? {
+            ValueStack::List { vals, .. } => {
+                Ok(vals.iter().map(Self::value_stack_to_value).collect())
+            }
+
+            ValueStack::Atom(_) => unreachable!()
+        }
+    }
+
+
+    fn read_atom(&self, token_string: &str) -> Result<ValueStack, Error> {
+        /* Reads an atomic value */
+
+        let value = match (token_string, token_string.chars().next().unwrap()) {
+            (_, '0'..='9') => {
+                let parse_int = rug::Integer::parse(token_string);
+                let parse_float = rug::Float::parse(token_string);
+
+                if let Ok(i) = parse_int {
+                    Value::Integer(rug::Integer::from(i))
+                } else if let Ok(f) = parse_float {
+                    Value::Float(rug::Float::with_val(53, f))
+                } else {
+                    return self.error_with_reader_position(format!("Could not parse '{}' as a number", token_string)).into()
+                }
             },
 
-            '('|'{'|'[' => {
-                let new_block = ValueStack::List {
-                    vals: LinkedList::new(),
-                    delim: first_char
-                };
+            ("true", _) => Value::Bool(true),
 
-                stack.push_back(new_block);
-                column_number += 1;
-            },
+            ("false", _) => Value::Bool(false),
+    
+            (_, '"') => Value::String(token_string.into()),
+    
+            ("nil"|"null", _) => Value::Nil,
+    
+            _ => Value::Name(token_string.into())
+        };
+    
+        Ok(ValueStack::Atom(value.rc()))
+    }
 
-            ')'|'}'|']' => {
-                let (lvals, ldelim) = match stack.pop_back().expect("Liszp: unreachable error 1") {
-                    ValueStack::List { vals, delim } => (vals, delim),
-                    ValueStack::Atom(_) => unreachable!()
-                };
 
-                let expected = match ldelim {
-                    '(' => ')',
-                    '[' => ']',
-                     _ => '}'
-                };
+    fn read_nested_lists(&mut self, source: &String) -> Result<ValueStack, Error> {
+        /* Reads nested lists into a ValueStack */
 
-                if first_char != expected {
-                    if stack.len() == 0 {
-                        error_with_reader_position!("unexpected closing bracket '{}'", first_char);
-                    } else {
-                        error_with_reader_position!(
-                            "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
-                            ldelim, expected, first_char
-                        );
+        let mut stack = vec![ ValueStack::List { vals: vec![], delim: '?' } ];
+
+        for token_string in Self::get_token_strings(source) {
+            let first_char = match token_string.chars().next() {
+                Some(c) => c,
+                None => continue
+            };
+
+            match first_char {
+                '#'  => {},
+
+                ' '  => self.column_number += 1,
+
+                '\n' => {
+                    self.line_number += 1;
+                    self.column_number = 1;
+                }
+
+                '('|'['|'{' => {
+                    stack.push(ValueStack::List { vals: vec![], delim: first_char });
+                    self.column_number += 1;
+                },
+
+                ')'|']'|'}' => {
+                    self.read_closing_bracket(first_char, &mut stack)?;
+                    self.column_number += 1;
+                },
+
+                _ => {
+                    match stack.last_mut().expect("Liszp: unreachable error 3") {
+                        ValueStack::List { vals, .. } => {
+                            vals.push(self.read_atom(token_string)?);
+                            self.column_number += token_string.len();
+                        },
+
+                        _ => unreachable!()
                     }
                 }
+            }
+        }
 
-                match stack.back_mut().expect("Liszp: unreachable error 2") {
-                    ValueStack::List { vals, .. } => {
-                        vals.push_back(ValueStack::List { vals: lvals, delim: ldelim });
-                    },
-                    _ => unreachable!()
-                }
 
-                column_number += 1;
+        Ok(stack.pop().unwrap())
+    }
+
+
+    fn read_closing_bracket(&self, first_char: char, stack: &mut Vec<ValueStack>) -> Result<(), Error> {
+        /* Reads a closing bracket */
+
+        let (list_vals, list_delim) = match stack.pop().expect("Liszp: unreachable error 1") {
+            ValueStack::List { vals, delim } => (vals, delim),
+            ValueStack::Atom(_) => unreachable!()
+        };
+
+        let expected = match list_delim {
+            '(' => ')',
+            '[' => ']',
+             _ => '}'
+        };
+
+        if first_char != expected {
+            if stack.len() == 0 {
+                return self.error_with_reader_position(format!("unexpected closing bracket '{}'", first_char)).into();
+            } else {
+                return self.error_with_reader_position(format!(
+                    "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
+                    list_delim, expected, first_char
+                )).into();
+            }
+        }
+
+        match stack.last_mut().expect("Liszp: unreachable error 2") {
+            ValueStack::List { vals, .. } => {
+                vals.push(ValueStack::List { vals: list_vals, delim: list_delim });
             },
 
-            _ => {
-                let atom = read_atom(expr_str.into())?;
-
-                match stack.back_mut().expect("Liszp: unreachable error 3") {
-                    ValueStack::List { vals, .. } => {
-                        vals.push_back(atom);
-                        column_number += expr_str.len();
-                    },
-                    _ => unreachable!()
-                };
-            }
+            _ => unreachable!()
         }
+
+        Ok(())
     }
 
-    Ok(stack.pop_front().unwrap())
-}
+
+    fn get_token_strings<'s>(source: &'s String) -> impl Iterator<Item = &'s str> {
+        /* Returns an iterator of all strings found by the regex */
+
+        lazy_static! {
+            static ref REGEX: Regex = Regex::new(concat!(
+                "#.*?\n|",
+                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
+                r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
+                "\".*?\"|\'.*?\'|\n|,|",
+                r"\(|\)|\[|\]|\{|\}"
+            )).unwrap();
+        }
+
+        REGEX.find_iter(source).map(|m| m.as_str())
+    }
 
 
-pub fn read(source: &String, filename: String) -> Result<Vec<Rc<Value>>, Error> {
-   /* Reads a source string into an array of Values */
+    fn error_with_reader_position<S: ToString>(&self, msg: S) -> Error {
+        /* Creates an error message with the position of the reader */
 
-    fn rec_read(stack: &ValueStack) -> Rc<Value> {
-        /* Recursively turns ValueStacks into Values (including LinkedList -> Value::Cons) */
+        new_error!(
+            "reader error in {}:{}:{}\n{}",
+            &self.filename,
+            self.line_number,
+            self.column_number,
+            msg.to_string()
+        )
+    }
 
-        match stack {
+
+    fn value_stack_to_value(value_stack: &ValueStack) -> Rc<Value> {
+        /* Recursively turns ValueStacks into Values */
+
+        match value_stack {
             ValueStack::Atom(atom) => atom.clone(),
-            ValueStack::List { vals, .. } => {
+
+            ValueStack::List { vals, delim } => {
                 let mut list = Value::Nil.rc();
 
-                for val in vals.iter().rev() {
-                    list = Rc::new(Value::Cons {
-                        car: rec_read(val),
-                        cdr: list
-                    });
+                for v in vals.iter().rev() {
+                    list = Value::cons(&Self::value_stack_to_value(v), &list).rc()
                 }
 
-                return list;
+                list
             }
         }
     }
-
-    let values = match read_nested_lists(source, filename)? {
-        ValueStack::List { vals, .. } => vals,
-        _ => unreachable!()
-    };
-
-    Ok(values.iter().map(rec_read).collect())
 }
