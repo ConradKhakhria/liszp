@@ -89,7 +89,7 @@ impl CPSConverter {
         if let Some(conditional) = converter.convert_conditional(expr)? {
             Ok(conditional)
         } else {
-            converter.collect_components(&restructured);
+            converter.collect_components(&restructured)?;
             Ok(converter.assemble_cps_expression(expr))
         }
     }
