@@ -155,7 +155,7 @@ impl CPSConverter {
 
         match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => self.convert_quote(expr),
+            "&quote"  => self.convert_quote(&components),
             _ => {
                 let mut component_labels = vec![ components[0].clone() ];
 
@@ -172,7 +172,7 @@ impl CPSConverter {
     }
 
 
-    pub fn convert_lambda(components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+    fn convert_lambda(components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a lambda expression to continuation-passing style */
     
         if let [kwd_lambda, args, body] = components.as_slice() {
@@ -197,37 +197,46 @@ impl CPSConverter {
     }
 
 
-    pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    fn convert_quote(&mut self, components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a quoted expression to continuation-passing style */
 
-        let components = match expr.to_list() {
-            Some(xs) => {
-                if xs.is_empty() {
-                    return Ok(Value::Nil.rc())
-                } else {
-                    xs
-                }
-            },
+        if components.len() != 2 {
+            return new_error!("quote expressions take exactly 1 argument").into();
+        }
 
+        let new_expression = refcount_list![
+            components[0].clone(),
+            self.apply_unquote(&components[1])?
+        ];
+
+        self.dfs_expr_components.push(new_expression);
+
+        Ok(self.generate_continuation_label())
+    }
+
+
+    fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* DFS searches expr for an unquote and arranges the subexpr accordingly */
+
+        let components = match expr.to_list() {
+            Some(xs) => xs,
             None => return Ok(expr.clone())
         };
 
-        if components[0].name() == "&unquote" {
-            if components.len() == 2 {
-                self.collect_components(&components[1])
-            } else {
-                new_error!("unquote expressions must contain exactly 1 argument").into()
-            }
-        } else {
-            let mut new_expr_component_labels = vec![];
-
-            for comp in components.iter() {
-                new_expr_component_labels.push(self.convert_quote(comp)?);
-            }
-
-            self.dfs_expr_components.push(Value::cons_list(&new_expr_component_labels));
+        if components.len() == 0 {
+            return Ok(expr.clone());
+        } else if components[0].name() == "&unquote" {
+            self.collect_components(&components[1])?;
 
             Ok(self.generate_continuation_label())
+        } else {
+            let mut new_components = vec![];
+
+            for comp in components.iter() {
+                new_components.push(self.apply_unquote(comp)?);
+            }
+
+            Ok(Value::cons_list(&new_components))
         }
     }
 
