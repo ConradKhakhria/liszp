@@ -2,3 +2,4 @@ target/*
 src/old_*
 examples/test
 file.txt
+examples/scratch.lzp
