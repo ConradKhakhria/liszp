@@ -315,6 +315,19 @@ impl Evaluator {
                         cdr: self.recursively_bind_args(cdr, arg_map)?
                     }))
                 }
+            },
+
+            Value::Quote(quoted) => {
+                // We only bind arguments in quoted expressions when the argument
+                // comes from a continuation lambda (i.e. has a '@@' prefix).
+
+                for key in arg_map.keys() {
+                    if key.len() < 2 || &key[..2] != "@@" {
+                        return Ok(expr.clone())
+                    }
+                }
+
+                self.recursively_bind_args(quoted, arg_map)
             }
 
             _ => Ok(expr.clone())
