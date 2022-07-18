@@ -7,50 +7,38 @@ use crate::{
 use std::rc::Rc;
 
 use lazy_static::lazy_static;
-use regex::Regex;
+use regex::{ Matches, Regex };
 use rug;
 
 
-// for use in the bracket collection algorithm
-enum ValueStack {
-    Atom(Rc<Value>),
-
-    List {
-        vals: Vec<ValueStack>,
-        delim: char
-    }
-}
-
-
-pub struct Reader {
+pub struct Reader<'s> {
+    token_stream: Matches<'static, 's>,
     filename: String,
     line_number: usize,
     column_number: usize,
 }
 
 
-impl Reader {
-    pub fn new(filename: String) -> Self {
+impl<'s> Reader<'s> {
+    pub fn new(source: &'s String, filename: String) -> Self {
         /* Creates a new Reader */
 
+        lazy_static! {
+            static ref REGEX: Regex = Regex::new(concat!(
+                "#.*?\n|",
+                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
+                r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
+                "\".*?\"|\'.\'|\'|\n|,|",
+                r"\(|\)|\[|\]|\{|\}"
+            )).unwrap();
+        }
+
         Reader {
+            token_stream: REGEX.find_iter(source),
             filename,
             line_number: 1,
             column_number: 1,
         }
-    }
-
-
-    pub fn read(&mut self, source: &String) -> Result<Vec<Rc<Value>>, Error> {
-        /* Reads a source string into a list of Values */
-
-        self.line_number = 1;
-        self.column_number = 1;
-
-        let mut token_stream = Self::get_token_stream(source);
-        let read_stream_result = self.read_stream(&mut token_stream, false);
-
-        Ok(read_stream_result?.to_list().unwrap())
     }
 
 
@@ -67,23 +55,6 @@ impl Reader {
             self.column_number,
             msg.to_string()
         )
-    }
-
-
-    fn get_token_stream<'s>(source: &'s String) -> impl Iterator<Item = &'s str> {
-        /* Returns an iterator of all strings found by the regex */
-
-        lazy_static! {
-            static ref REGEX: Regex = Regex::new(concat!(
-                "#.*?\n|",
-                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
-                r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-                "\".*?\"|\'.\'|\'|\n|,|",
-                r"\(|\)|\[|\]|\{|\}"
-            )).unwrap();
-        }
-
-        REGEX.find_iter(source).map(|m| m.as_str())
     }
 
 
@@ -121,7 +92,27 @@ impl Reader {
     }
 
 
-    fn read_stream<'s>(&mut self, stream: &mut impl Iterator<Item = &'s str>, recursive_call: bool) -> Result<Rc<Value>, Error> {
+    fn match_closing_bracket(&self, opening_char: char, closing_bracket: char) -> Result<(), Error> {
+        /* Reads the closing bracket of an expression */
+
+        let expected = match opening_char {
+            '(' => ')',
+            '[' => ']',
+             _ => '}'
+        };
+
+        if closing_bracket != expected {
+            self.error_with_reader_position(format!(
+                "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
+                opening_char, expected, closing_bracket
+            )).into()
+        } else {
+            Ok(())
+        }
+    }
+
+
+    fn read_stream(&mut self, opening_char: char, recursive_call: bool) -> Result<Rc<Value>, Error> {
        /* Reads a token stream
         *
         * parameter 'recursive_call' says whether the call to read_stream()
@@ -130,7 +121,8 @@ impl Reader {
 
         let mut elements = vec![];
 
-        while let Some(token_string) = stream.next() {
+        while let Some(token_match) = self.token_stream.next() {
+            let token_string = token_match.as_str();
             let first_char = match token_string.chars().next() {
                 Some(c) => c,
                 None => {
@@ -151,16 +143,20 @@ impl Reader {
 
                 '('|'['|'{' => {
                     self.column_number += 1;
-                    elements.push(self.read_stream(stream, true)?);
+                    elements.push(self.read_stream(first_char, true)?);
                 },
 
                 ')'|']'|'}' => {
                     self.column_number += 1;
 
                     if recursive_call {
-                        break;
+                        self.match_closing_bracket(opening_char, first_char)?;
+
+                        return Ok(Value::cons_list(&elements));
                     } else {
-                        unimplemented!();
+                        let msg = format!("found unmatched closing '{}'", first_char);
+
+                        return self.error_with_reader_position(msg).into()
                     }
                 },
 
@@ -171,51 +167,21 @@ impl Reader {
             }
         }
 
-        Ok(Value::cons_list(&elements))
-    }
-
-
-    /* Helper functions */
-
-
-
-
-
-
-    fn old_read_closing_bracket(&self, first_char: char, stack: &mut Vec<ValueStack>) -> Result<(), Error> {
-        /* Reads a closing bracket */
-
-        let (list_vals, list_delim) = match stack.pop().expect("Liszp: unreachable error 1") {
-            ValueStack::List { vals, delim } => (vals, delim),
-            ValueStack::Atom(_) => unreachable!()
-        };
-
-        let expected = match list_delim {
-            '(' => ')',
-            '[' => ']',
-             _ => '}'
-        };
-
-        if first_char != expected {
-            if stack.len() == 0 {
-                return self.error_with_reader_position(format!("unexpected closing bracket '{}'", first_char)).into();
-            } else {
-                return self.error_with_reader_position(format!(
-                    "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
-                    list_delim, expected, first_char
-                )).into();
-            }
+        if recursive_call {
+            self.error_with_reader_position("missing closing bracket or brackets").into()
+        } else {
+            Ok(Value::cons_list(&elements))
         }
-
-        match stack.last_mut().expect("Liszp: unreachable error 2") {
-            ValueStack::List { vals, .. } => {
-                vals.push(ValueStack::List { vals: list_vals, delim: list_delim });
-            },
-
-            _ => unreachable!()
-        }
-
-        Ok(())
     }
+}
 
+
+pub fn read<S: ToString>(source: &String, filename: S) -> Result<Vec<Rc<Value>>, Error> {
+    /* Reads a source string into a list of values */
+
+    let mut reader = Reader::new(source, filename.to_string());
+
+    reader
+        .read_stream('?', false)
+        .map(|v| v.to_list().unwrap())  
 }
