@@ -149,12 +149,13 @@ impl CPSConverter {
                     xs
                 }
             },
+
             None => return Ok(expr.clone())
         };
 
         match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => Ok(self.convert_quote(expr)),
+            "&quote"  => self.convert_quote(expr),
             _ => {
                 let mut component_labels = vec![ components[0].clone() ];
 
@@ -165,7 +166,7 @@ impl CPSConverter {
 
                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
 
-                Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+                Ok(self.generate_continuation_label())
             }
         }
     }
@@ -196,16 +197,42 @@ impl CPSConverter {
     }
 
 
-    pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Rc<Value> {
+    pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Converts a quoted expression to continuation-passing style */
 
-        self.dfs_expr_components.push(expr.clone());
+        let components = match expr.to_list() {
+            Some(xs) => {
+                if xs.is_empty() {
+                    return Ok(Value::Nil.rc())
+                } else {
+                    xs
+                }
+            },
 
-        Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc()
+            None => return Ok(expr.clone())
+        };
+
+        if components[0].name() == "&unquote" {
+            if components.len() == 2 {
+                self.collect_components(&components[1])
+            } else {
+                new_error!("unquote expressions must contain exactly 1 argument").into()
+            }
+        } else {
+            let mut new_expr_component_labels = vec![];
+
+            for comp in components.iter() {
+                new_expr_component_labels.push(self.convert_quote(comp)?);
+            }
+
+            self.dfs_expr_components.push(Value::cons_list(&new_expr_component_labels));
+
+            Ok(self.generate_continuation_label())
+        }
     }
 
 
-    pub fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
+    fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
         /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
 
         let mut converted_expression = self.continuation.clone();
@@ -241,6 +268,15 @@ impl CPSConverter {
         } else {
             converted_expression
         }
+    }
+
+
+    fn generate_continuation_label(&self) -> Rc<Value> {
+        /* Creates a label for the latest continuation value produced */
+
+        let label_name = format!("@@k{}", self.dfs_expr_components.len() - 1);
+
+        Value::Name(label_name).rc()
     }
 }
 

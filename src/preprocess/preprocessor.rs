@@ -11,7 +11,11 @@ pub fn preprocess(expr: Rc<Value>) -> Result<Rc<Value>, Error> {
     /* Preprocesses a value */
 
     let formatted = fmt::format_names(&expr);
-    let cps_converted = cps::convert_expr(&formatted);
+    let cps_converted = cps::convert_expr(&formatted)?;
 
-    cps_converted
+    println!("{}", cps_converted);
+
+    unimplemented!();
+
+    Ok(cps_converted)
 }
