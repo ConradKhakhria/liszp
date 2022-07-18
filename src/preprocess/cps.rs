@@ -1,5 +1,9 @@
-use crate::value::Value;
-use crate::refcount_list;
+use crate::{
+    error::Error,
+    new_error,
+    refcount_list,
+    value::Value
+};
 
 use std::rc::Rc;
 
@@ -48,7 +52,7 @@ impl CPSConverter {
     }
 
 
-    fn move_conditionals_to_top_level(&self, expr: &Rc<Value>) -> Rc<Value> {
+    fn move_conditionals_to_top_level(&self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Moves all if expressions to the top level of the expression */
 
         if let Some(conditional) = self.find_conditional(expr) {
@@ -56,50 +60,53 @@ impl CPSConverter {
                 let expr_with_true_case = Value::substitute(expr, &conditional, true_case);
                 let expr_with_false_case = Value::substitute(expr, &conditional, false_case);
 
-                let true_case = self.move_conditionals_to_top_level(&expr_with_true_case);
-                let false_case = self.move_conditionals_to_top_level(&expr_with_false_case);
+                let true_case = self.move_conditionals_to_top_level(&expr_with_true_case)?;
+                let false_case = self.move_conditionals_to_top_level(&expr_with_false_case)?;
 
-                crate::refcount_list![
+                Ok(refcount_list![
                     Value::Name("&if".into()).rc(),
                     condition.clone(),
                     true_case,
                     false_case
-                ]
+                ])
             } else {
-                panic!("Liszp: expected syntax (if <cond> <true-case> <false-case>)");
+                new_error!("Liszp: expected syntax (if <cond> <true-case> <false-case>)").into()
             }
         } else {
-            expr.clone()
+            Ok(expr.clone())
         }
     }
 
 
     /* CPS conversion */
 
-    fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Rc<Value> {
+    fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* convert_expr() but with an explicit continuation for the entire expr */
 
         let mut converter = Self::new(continuation);
-        let restructured = converter.move_conditionals_to_top_level(expr);
+        let restructured = converter.move_conditionals_to_top_level(expr)?;
 
-        if let Some(conditional) = converter.convert_conditional(expr) {
-            conditional
+        if let Some(conditional) = converter.convert_conditional(expr)? {
+            Ok(conditional)
         } else {
             converter.collect_components(&restructured);
-            converter.assemble_cps_expression(expr)
+            Ok(converter.assemble_cps_expression(expr))
         }
     }
 
 
-    pub fn convert_conditional(&mut self, expr: &Rc<Value>) -> Option<Rc<Value>> {
+    pub fn convert_conditional(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
         /* If expr is a conditional, this will convert it to CPS */
 
-        let components = expr.to_list()?;
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => return Ok(None)
+        };
 
         if components.is_empty() || components[0].name() != "&if" {
-            return None;
+            return Ok(None);
         } else if components.len() != 4 {
-            panic!("Liszp: expected syntax (if <conditon> <true case> <false case>)");
+            return new_error!("Liszp: expected syntax (if <conditon> <true case> <false case>)").into();
         }
 
         let kwd_if = &components[0];
@@ -110,8 +117,8 @@ impl CPSConverter {
         let conditional_expr = refcount_list![
             kwd_if.clone(),
             Value::Name("@@k-if".into()).rc(),
-            Self::convert_expr_with_continuation(true_case, &self.continuation),
-            Self::convert_expr_with_continuation(false_case, &self.continuation)
+            Self::convert_expr_with_continuation(true_case, &self.continuation)?,
+            Self::convert_expr_with_continuation(false_case, &self.continuation)?
         ];
 
         let conditional_expr_continuation = refcount_list![
@@ -120,11 +127,12 @@ impl CPSConverter {
             conditional_expr
         ];
 
-        Some(Self::convert_expr_with_continuation(condition, &conditional_expr_continuation))
+        Self::convert_expr_with_continuation(condition, &conditional_expr_continuation)
+            .map(|r| Some(r))
     }
 
 
-    fn collect_components(&mut self, expr: &Rc<Value>) -> Rc<Value> {
+    fn collect_components(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
        /* Collects the components of an expression via depth-first search
         *
         * Returns
@@ -136,34 +144,34 @@ impl CPSConverter {
         let components = match expr.to_list() {
             Some(xs) => {
                 if xs.is_empty() {
-                    return Value::Nil.rc()
+                    return Ok(Value::Nil.rc())
                 } else {
                     xs
                 }
             },
-            None => return expr.clone()
+            None => return Ok(expr.clone())
         };
 
         match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => self.convert_quote(expr),
+            "&quote"  => Ok(self.convert_quote(expr)),
             _ => {
                 let mut component_labels = vec![ components[0].clone() ];
 
                 // depth-first collection of sub-expressions
                 for comp in components[1..].iter() {
-                    component_labels.push(self.collect_components(comp));
+                    component_labels.push(self.collect_components(comp)?);
                 }
 
                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
 
-                Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc()
+                Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
             }
         }
     }
 
 
-    pub fn convert_lambda(components: &Vec<Rc<Value>>) -> Rc<Value> {
+    pub fn convert_lambda(components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a lambda expression to continuation-passing style */
     
         if let [kwd_lambda, args, body] = components.as_slice() {
@@ -175,15 +183,15 @@ impl CPSConverter {
                 refcount_list![ lambda_continuation.clone(), args.clone() ]
             };
 
-            let body = Self::convert_expr_with_continuation(body, &lambda_continuation);
+            let body = Self::convert_expr_with_continuation(body, &lambda_continuation)?;
 
-            refcount_list![
+            Ok(refcount_list![
                 kwd_lambda.clone(),
                 args,
                 body
-            ]
+            ])
         } else {
-            panic!("Liszp: expected syntax (lambda <args> <body>");
+            new_error!("Liszp: expected syntax (lambda <args> <body>").into()
         }
     }
 
@@ -237,7 +245,7 @@ impl CPSConverter {
 }
 
 
-pub fn convert_expr(expr: &Rc<Value>) -> Rc<Value> {
+pub fn convert_expr(expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
     /* Converts an expression to continuation-passing style */
 
     CPSConverter::convert_expr_with_continuation(expr, &Value::Name("no-continuation".into()).rc())

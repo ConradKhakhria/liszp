@@ -1,9 +1,13 @@
-use crate::value::Value;
-use crate::preprocess::{ cps, fmt };
+use crate::{
+    error::Error,
+    preprocess::{ cps, fmt },
+    value::Value
+};
+
 use std::rc::Rc;
 
 
-pub fn preprocess(expr: Rc<Value>) -> Rc<Value> {
+pub fn preprocess(expr: Rc<Value>) -> Result<Rc<Value>, Error> {
     /* Preprocesses a value */
 
     let formatted = fmt::format_names(&expr);

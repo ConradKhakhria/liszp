@@ -116,7 +116,7 @@ impl Evaluator {
         let read_exprs = reader.read(&source)?;
 
         for expr in read_exprs.iter() {
-            let preprocessed = preprocess(expr.clone());
+            let preprocessed = preprocess(expr.clone())?;
             let evaluated = self.eval(&preprocessed)?;
 
             self.evaluated.push(evaluated);
@@ -137,7 +137,7 @@ impl Evaluator {
             xs => return new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
         };
 
-        let preprocessed = preprocess(expr.clone());
+        let preprocessed = preprocess(expr.clone())?;
 
         self.eval(&preprocessed)
     }
