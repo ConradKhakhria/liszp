@@ -92,7 +92,7 @@ impl CPSConverter {
         if components.len() == 0 {
             return Ok(expr.clone());
         } else if components[0].name() == "&unquote" {
-            self.convert_expr(&components[1])?;
+            self.recursive_convert_expr(&components[1])?;
 
             Ok(self.generate_continuation_label())
         } else {
@@ -183,46 +183,6 @@ impl CPSConverter {
     }
 
 
-    fn convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
-       /* Collects the components of an expression via depth-first search
-        *
-        * Returns
-        * -------
-        * expr, but with its components replaced by numbered continuation
-        * variables.
-        */
-
-        let components = match expr.to_list() {
-            Some(xs) => {
-                if xs.is_empty() {
-                    return Ok(Value::Nil.rc())
-                } else {
-                    xs
-                }
-            },
-
-            None => return Ok(expr.clone())
-        };
-
-        match components[0].name().as_str() {
-            "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => self.convert_quote(&components),
-            _ => {
-                let mut component_labels = vec![ components[0].clone() ];
-
-                // depth-first collection of sub-expressions
-                for comp in components[1..].iter() {
-                    component_labels.push(self.convert_expr(comp)?);
-                }
-
-                self.dfs_expr_components.push(Value::cons_list(&component_labels));
-
-                Ok(self.generate_continuation_label())
-            }
-        }
-    }
-
-
     fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* convert_expr() but with an explicit continuation for the entire expr */
 
@@ -232,7 +192,7 @@ impl CPSConverter {
         if let Some(conditional) = converter.convert_conditional(expr)? {
             Ok(conditional)
         } else {
-            converter.convert_expr(&restructured)?;
+            converter.recursive_convert_expr(&restructured)?;
             Ok(converter.assemble_cps_expression(expr))
         }
     }
@@ -288,6 +248,46 @@ impl CPSConverter {
 
         Value::Name(label_name).rc()
     }
+
+
+    fn recursive_convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* Collects the components of an expression via depth-first search
+         *
+         * Returns
+         * -------
+         * expr, but with its components replaced by numbered continuation
+         * variables.
+         */
+ 
+         let components = match expr.to_list() {
+             Some(xs) => {
+                 if xs.is_empty() {
+                     return Ok(Value::Nil.rc())
+                 } else {
+                     xs
+                 }
+             },
+ 
+             None => return Ok(expr.clone())
+         };
+ 
+         match components[0].name().as_str() {
+             "&lambda" => Self::convert_lambda(&components),
+             "&quote"  => self.convert_quote(&components),
+             _ => {
+                 let mut component_labels = vec![ components[0].clone() ];
+ 
+                 // depth-first collection of sub-expressions
+                 for comp in components[1..].iter() {
+                     component_labels.push(self.recursive_convert_expr(comp)?);
+                 }
+ 
+                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
+ 
+                 Ok(self.generate_continuation_label())
+             }
+         }
+     }
 }
 
 
