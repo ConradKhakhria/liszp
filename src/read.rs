@@ -57,6 +57,39 @@ impl Reader {
     }
 
 
+    /* Helper functions */
+
+
+    fn error_with_reader_position<S: ToString>(&self, msg: S) -> Error {
+        /* Creates an error message with the position of the reader */
+
+        new_error!(
+            "reader error in {}:{}:{}\n{}",
+            &self.filename,
+            self.line_number,
+            self.column_number,
+            msg.to_string()
+        )
+    }
+
+
+    fn get_token_stream<'s>(source: &'s String) -> impl Iterator<Item = &'s str> {
+        /* Returns an iterator of all strings found by the regex */
+
+        lazy_static! {
+            static ref REGEX: Regex = Regex::new(concat!(
+                "#.*?\n|",
+                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
+                r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
+                "\".*?\"|\'.\'|\'|\n|,|",
+                r"\(|\)|\[|\]|\{|\}"
+            )).unwrap();
+        }
+
+        REGEX.find_iter(source).map(|m| m.as_str())
+    }
+
+
     fn read_atom(&self, token_string: &str) -> Result<ValueStack, Error> {
         /* Reads an atomic value */
 
@@ -88,54 +121,6 @@ impl Reader {
         };
     
         Ok(ValueStack::Atom(value.rc()))
-    }
-
-
-    fn read_into_value_stack(&mut self, source: &String) -> Result<ValueStack, Error> {
-        /* Reads nested lists into a ValueStack */
-
-        let mut stack = vec![ ValueStack::List { vals: vec![], delim: '?' } ];
-
-        for token_string in Self::get_token_strings(source) {
-            let first_char = match token_string.chars().next() {
-                Some(c) => c,
-                None => continue
-            };
-
-            match first_char {
-                '#'  => {},
-
-                ' '  => self.column_number += 1,
-
-                '\n' => {
-                    self.line_number += 1;
-                    self.column_number = 1;
-                }
-
-                '('|'['|'{' => {
-                    stack.push(ValueStack::List { vals: vec![], delim: first_char });
-                    self.column_number += 1;
-                },
-
-                ')'|']'|'}' => {
-                    self.read_closing_bracket(first_char, &mut stack)?;
-                    self.column_number += 1;
-                },
-
-                _ => {
-                    match stack.last_mut().expect("Liszp: unreachable error 3") {
-                        ValueStack::List { vals, .. } => {
-                            vals.push(self.read_atom(token_string)?);
-                            self.column_number += token_string.len();
-                        },
-
-                        _ => unreachable!()
-                    }
-                }
-            }
-        }
-
-        Ok(stack.pop().unwrap())
     }
 
 
@@ -176,33 +161,51 @@ impl Reader {
     }
 
 
-    fn get_token_strings<'s>(source: &'s String) -> impl Iterator<Item = &'s str> {
-        /* Returns an iterator of all strings found by the regex */
+    fn read_into_value_stack(&mut self, source: &String) -> Result<ValueStack, Error> {
+        /* Reads nested lists into a ValueStack */
 
-        lazy_static! {
-            static ref REGEX: Regex = Regex::new(concat!(
-                "#.*?\n|",
-                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
-                r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-                "\".*?\"|\'.\'|\'|\n|,|",
-                r"\(|\)|\[|\]|\{|\}"
-            )).unwrap();
+        let mut stack = vec![ ValueStack::List { vals: vec![], delim: '?' } ];
+
+        for token_string in Self::get_token_stream(source) {
+            let first_char = match token_string.chars().next() {
+                Some(c) => c,
+                None => continue
+            };
+
+            match first_char {
+                '#'  => {},
+
+                ' '  => self.column_number += 1,
+
+                '\n' => {
+                    self.line_number += 1;
+                    self.column_number = 1;
+                }
+
+                '('|'['|'{' => {
+                    stack.push(ValueStack::List { vals: vec![], delim: first_char });
+                    self.column_number += 1;
+                },
+
+                ')'|']'|'}' => {
+                    self.read_closing_bracket(first_char, &mut stack)?;
+                    self.column_number += 1;
+                },
+
+                _ => {
+                    match stack.last_mut().expect("Liszp: unreachable error 3") {
+                        ValueStack::List { vals, .. } => {
+                            vals.push(self.read_atom(token_string)?);
+                            self.column_number += token_string.len();
+                        },
+
+                        _ => unreachable!()
+                    }
+                }
+            }
         }
 
-        REGEX.find_iter(source).map(|m| m.as_str())
-    }
-
-
-    fn error_with_reader_position<S: ToString>(&self, msg: S) -> Error {
-        /* Creates an error message with the position of the reader */
-
-        new_error!(
-            "reader error in {}:{}:{}\n{}",
-            &self.filename,
-            self.line_number,
-            self.column_number,
-            msg.to_string()
-        )
+        Ok(stack.pop().unwrap())
     }
 
 
