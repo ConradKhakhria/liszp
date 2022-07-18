@@ -112,8 +112,7 @@ impl Evaluator {
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
 
-        let mut reader = read::Reader::new(filename);
-        let read_exprs = reader.read(&source)?;
+        let read_exprs = read::read(&source, filename)?;
 
         for expr in read_exprs.iter() {
             let preprocessed = preprocess(expr.clone())?;
@@ -129,8 +128,7 @@ impl Evaluator {
     pub fn eval_source_string<S: Into<String>>(&mut self, source: &String, filename: S) -> Result<Rc<Value>, Error> {
         /* Evaluates a source string into one value */
 
-        let mut reader = read::Reader::new(filename.into());
-        let read_result = reader.read(source)?;
+        let read_result = read::read(source, filename.into())?;
 
         let expr = match read_result.as_slice() {
             [x] => x,
