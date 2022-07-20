@@ -80,68 +80,17 @@ impl CPSConverter {
 
     /* CPS conversion */
 
+    fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* convert_expr() but with an explicit continuation for the entire expr */
 
-    fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* DFS searches expr for an unquote and arranges the subexpr accordingly */
+        let mut converter = Self::new(continuation);
+        let restructured = converter.move_conditionals_to_top_level(expr)?;
 
-        let components = match expr.to_list() {
-            Some(xs) => xs,
-            None => return Ok(expr.clone())
-        };
-
-        if components.len() == 0 {
-            return Ok(expr.clone());
-        } else if components[0].name() == "&unquote" {
-            self.collect_components(&components[1])?;
-
-            Ok(self.generate_continuation_label())
+        if let Some(conditional) = converter.convert_conditional(expr)? {
+            Ok(conditional)
         } else {
-            let mut new_components = vec![];
-
-            for comp in components.iter() {
-                new_components.push(self.apply_unquote(comp)?);
-            }
-
-            Ok(Value::cons_list(&new_components))
-        }
-    }
-
-
-    fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
-        /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
-
-        let mut converted_expression = self.continuation.clone();
-        let mut atomic = true;
-
-        // We start at the last expression to be evaluated and build the previous continuations
-        // around it.
-        for (continuation_number, expr) in self.dfs_expr_components.iter().enumerate().rev() {
-            if let Value::Cons { car, cdr } = &**expr {
-                let continuation = if atomic {
-                    atomic = false;
-                    converted_expression
-                } else {
-                    refcount_list![
-                        Value::Name("&lambda".into()).rc(),
-                        Value::Name(format!("@@k{}", continuation_number)).rc(),
-                        converted_expression
-                    ]
-                };
-
-                converted_expression = Value::cons(
-                    car,
-                    &Value::cons(&continuation, cdr).rc()
-                ).rc();
-            }
-        }
-
-        if atomic {
-            refcount_list![
-                converted_expression,
-                original_value.clone()
-            ]
-        } else {
-            converted_expression
+            converter.collect_components(&restructured)?;
+            Ok(converter.assemble_cps_expression(expr))
         }
     }
 
@@ -223,21 +172,6 @@ impl CPSConverter {
     }
 
 
-    fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* convert_expr() but with an explicit continuation for the entire expr */
-
-        let mut converter = Self::new(continuation);
-        let restructured = converter.move_conditionals_to_top_level(expr)?;
-
-        if let Some(conditional) = converter.convert_conditional(expr)? {
-            Ok(conditional)
-        } else {
-            converter.collect_components(&restructured)?;
-            Ok(converter.assemble_cps_expression(expr))
-        }
-    }
-
-
     fn convert_lambda(components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a lambda expression to continuation-passing style */
     
@@ -278,6 +212,71 @@ impl CPSConverter {
         self.dfs_expr_components.push(new_expression);
 
         Ok(self.generate_continuation_label())
+    }
+
+
+    fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* DFS searches expr for an unquote and arranges the subexpr accordingly */
+
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => return Ok(expr.clone())
+        };
+
+        if components.len() == 0 {
+            return Ok(expr.clone());
+        } else if components[0].name() == "&unquote" {
+            self.collect_components(&components[1])?;
+
+            Ok(self.generate_continuation_label())
+        } else {
+            let mut new_components = vec![];
+
+            for comp in components.iter() {
+                new_components.push(self.apply_unquote(comp)?);
+            }
+
+            Ok(Value::cons_list(&new_components))
+        }
+    }
+
+
+    fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
+        /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
+
+        let mut converted_expression = self.continuation.clone();
+        let mut atomic = true;
+
+        // We start at the last expression to be evaluated and build the previous continuations
+        // around it.
+        for (continuation_number, expr) in self.dfs_expr_components.iter().enumerate().rev() {
+            if let Value::Cons { car, cdr } = &**expr {
+                let continuation = if atomic {
+                    atomic = false;
+                    converted_expression
+                } else {
+                    refcount_list![
+                        Value::Name("&lambda".into()).rc(),
+                        Value::Name(format!("@@k{}", continuation_number)).rc(),
+                        converted_expression
+                    ]
+                };
+
+                converted_expression = Value::cons(
+                    car,
+                    &Value::cons(&continuation, cdr).rc()
+                ).rc();
+            }
+        }
+
+        if atomic {
+            refcount_list![
+                converted_expression,
+                original_value.clone()
+            ]
+        } else {
+            converted_expression
+        }
     }
 
 
