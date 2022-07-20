@@ -89,7 +89,7 @@ impl CPSConverter {
         if let Some(conditional) = converter.convert_conditional(expr)? {
             Ok(conditional)
         } else {
-            converter.collect_components(&restructured)?;
+            converter.recursive_convert_expr(&restructured)?;
             Ok(converter.assemble_cps_expression(expr))
         }
     }
@@ -132,7 +132,7 @@ impl CPSConverter {
     }
 
 
-    fn collect_components(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    fn recursive_convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
        /* Collects the components of an expression via depth-first search
         *
         * Returns
@@ -160,7 +160,7 @@ impl CPSConverter {
 
                 // depth-first collection of sub-expressions
                 for comp in components[1..].iter() {
-                    component_labels.push(self.collect_components(comp)?);
+                    component_labels.push(self.recursive_convert_expr(comp)?);
                 }
 
                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
