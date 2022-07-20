@@ -1,1 +1,0 @@
-(println (quote (1 (2 3) (unquote (* 2 2)))))

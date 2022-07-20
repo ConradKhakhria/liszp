@@ -1,4 +1,5 @@
-target/*
-src/old_*
+example/scratch.lzp
 examples/test
 file.txt
+src/old_*
+target/*
