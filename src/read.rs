@@ -58,26 +58,6 @@ impl<'s> Reader<'s> {
     }
 
 
-    fn match_closing_bracket(&self, opening_char: char, closing_bracket: char) -> Result<(), Error> {
-        /* Reads the closing bracket of an expression */
-
-        let expected = match opening_char {
-            '(' => ')',
-            '[' => ']',
-             _ => '}'
-        };
-
-        if closing_bracket != expected {
-            self.error_with_reader_position(format!(
-                "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
-                opening_char, expected, closing_bracket
-            )).into()
-        } else {
-            Ok(())
-        }
-    }
-
-
     fn read_atom(&self, token_string: &str) -> Result<Rc<Value>, Error> {
         /* Reads an atomic value */
 
@@ -109,6 +89,26 @@ impl<'s> Reader<'s> {
         };
     
         Ok(value.rc())
+    }
+
+
+    fn match_closing_bracket(&self, opening_char: char, closing_bracket: char) -> Result<(), Error> {
+        /* Reads the closing bracket of an expression */
+
+        let expected = match opening_char {
+            '(' => ')',
+            '[' => ']',
+             _ => '}'
+        };
+
+        if closing_bracket != expected {
+            self.error_with_reader_position(format!(
+                "Liszp: expected expr opened with '{}' to be closed with '{}', found '{}' instead",
+                opening_char, expected, closing_bracket
+            )).into()
+        } else {
+            Ok(())
+        }
     }
 
 
