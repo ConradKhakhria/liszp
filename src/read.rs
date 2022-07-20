@@ -47,7 +47,7 @@ impl Reader {
         self.line_number = 1;
         self.column_number = 1;
 
-        match self.read_into_value_stack(source)? {
+        match self.read_nested_lists(source)? {
             ValueStack::List { vals, .. } => {
                 Ok(vals.iter().map(Self::value_stack_to_value).collect())
             }
@@ -79,8 +79,6 @@ impl Reader {
             ("false", _) => Value::Bool(false),
     
             (_, '"') => Value::String(token_string.into()),
-
-            (c, '\'') => Value::String(String::new() + c),
     
             ("nil"|"null", _) => Value::Nil,
     
@@ -91,7 +89,7 @@ impl Reader {
     }
 
 
-    fn read_into_value_stack(&mut self, source: &String) -> Result<ValueStack, Error> {
+    fn read_nested_lists(&mut self, source: &String) -> Result<ValueStack, Error> {
         /* Reads nested lists into a ValueStack */
 
         let mut stack = vec![ ValueStack::List { vals: vec![], delim: '?' } ];
@@ -134,6 +132,7 @@ impl Reader {
                 }
             }
         }
+
 
         Ok(stack.pop().unwrap())
     }
@@ -184,7 +183,7 @@ impl Reader {
                 "#.*?\n|",
                 r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
                 r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-                "\".*?\"|\'.\'|\'|\n|,|",
+                "\".*?\"|\'.*?\'|\n|,|",
                 r"\(|\)|\[|\]|\{|\}"
             )).unwrap();
         }
