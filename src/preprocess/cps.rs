@@ -92,7 +92,7 @@ impl CPSConverter {
         if components.len() == 0 {
             return Ok(expr.clone());
         } else if components[0].name() == "&unquote" {
-            self.convert_expr(&components[1])?;
+            self.collect_components(&components[1])?;
 
             Ok(self.generate_continuation_label())
         } else {
@@ -183,7 +183,7 @@ impl CPSConverter {
     }
 
 
-    fn convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    fn collect_components(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
        /* Collects the components of an expression via depth-first search
         *
         * Returns
@@ -212,7 +212,7 @@ impl CPSConverter {
 
                 // depth-first collection of sub-expressions
                 for comp in components[1..].iter() {
-                    component_labels.push(self.convert_expr(comp)?);
+                    component_labels.push(self.collect_components(comp)?);
                 }
 
                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
@@ -232,7 +232,7 @@ impl CPSConverter {
         if let Some(conditional) = converter.convert_conditional(expr)? {
             Ok(conditional)
         } else {
-            converter.convert_expr(&restructured)?;
+            converter.collect_components(&restructured)?;
             Ok(converter.assemble_cps_expression(expr))
         }
     }
