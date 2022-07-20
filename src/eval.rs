@@ -112,10 +112,9 @@ impl Evaluator {
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
 
-        let mut reader = read::Reader::new(filename);
-        let read_exprs = reader.read(&source)?;
+        let exprs = read::read(&source, &filename)?;
 
-        for expr in read_exprs.iter() {
+        for expr in exprs.iter() {
             let preprocessed = preprocess(expr.clone())?;
             let evaluated = self.eval(&preprocessed)?;
 
@@ -129,10 +128,9 @@ impl Evaluator {
     pub fn eval_source_string<S: Into<String>>(&mut self, source: &String, filename: S) -> Result<Rc<Value>, Error> {
         /* Evaluates a source string into one value */
 
-        let mut reader = read::Reader::new(filename.into());
-        let read_result = reader.read(source)?;
+        let exprs = read::read(&source, &filename.into())?;
 
-        let expr = match read_result.as_slice() {
+        let expr = match exprs.as_slice() {
             [x] => x,
             xs => return new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
         };
