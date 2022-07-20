@@ -47,10 +47,13 @@ impl Reader {
         self.line_number = 1;
         self.column_number = 1;
 
-        let mut token_stream = Self::get_token_stream(source);
-        let read_stream_result = self.read_stream(&mut token_stream, false);
+        match self.read_into_value_stack(source)? {
+            ValueStack::List { vals, .. } => {
+                Ok(vals.iter().map(Self::value_stack_to_value).collect())
+            }
 
-        Ok(read_stream_result?.to_list().unwrap())
+            ValueStack::Atom(_) => unreachable!()
+        }
     }
 
 
@@ -87,7 +90,7 @@ impl Reader {
     }
 
 
-    fn read_atom(&self, token_string: &str) -> Result<Rc<Value>, Error> {
+    fn read_atom(&self, token_string: &str) -> Result<ValueStack, Error> {
         /* Reads an atomic value */
 
         let value = match (token_string, token_string.chars().next().unwrap()) {
@@ -117,72 +120,11 @@ impl Reader {
             _ => Value::Name(token_string.into())
         };
     
-        Ok(value.rc())
+        Ok(ValueStack::Atom(value.rc()))
     }
 
 
-    fn read_stream<'s>(&mut self, stream: &mut impl Iterator<Item = &'s str>, recursive_call: bool) -> Result<Rc<Value>, Error> {
-       /* Reads a token stream
-        *
-        * parameter 'recursive_call' says whether the call to read_stream()
-        * was made recursively.
-        */
-
-        let mut elements = vec![];
-
-        while let Some(token_string) = stream.next() {
-            let first_char = match token_string.chars().next() {
-                Some(c) => c,
-                None => {
-                    eprintln!("Found a zero-width token string");
-                    continue;
-                }
-            };
-
-            match first_char {
-                '#'  => continue,
-
-                ' '  => self.column_number += 1,
-
-                '\n' => {
-                    self.line_number += 1;
-                    self.column_number = 1;
-                }
-
-                '('|'['|'{' => {
-                    self.column_number += 1;
-                    elements.push(self.read_stream(stream, true)?);
-                },
-
-                ')'|']'|'}' => {
-                    self.column_number += 1;
-
-                    if recursive_call {
-                        break;
-                    } else {
-                        unimplemented!();
-                    }
-                },
-
-                _ => {
-                    self.column_number += token_string.len();
-                    elements.push(self.read_atom(token_string)?);
-                }
-            }
-        }
-
-        Ok(Value::cons_list(&elements))
-    }
-
-
-    /* Helper functions */
-
-
-
-
-
-
-    fn old_read_closing_bracket(&self, first_char: char, stack: &mut Vec<ValueStack>) -> Result<(), Error> {
+    fn read_closing_bracket(&self, first_char: char, stack: &mut Vec<ValueStack>) -> Result<(), Error> {
         /* Reads a closing bracket */
 
         let (list_vals, list_delim) = match stack.pop().expect("Liszp: unreachable error 1") {
@@ -218,4 +160,70 @@ impl Reader {
         Ok(())
     }
 
+
+    fn read_into_value_stack(&mut self, source: &String) -> Result<ValueStack, Error> {
+        /* Reads nested lists into a ValueStack */
+
+        let mut stack = vec![ ValueStack::List { vals: vec![], delim: '?' } ];
+
+        for token_string in Self::get_token_stream(source) {
+            let first_char = match token_string.chars().next() {
+                Some(c) => c,
+                None => continue
+            };
+
+            match first_char {
+                '#'  => {},
+
+                ' '  => self.column_number += 1,
+
+                '\n' => {
+                    self.line_number += 1;
+                    self.column_number = 1;
+                }
+
+                '('|'['|'{' => {
+                    stack.push(ValueStack::List { vals: vec![], delim: first_char });
+                    self.column_number += 1;
+                },
+
+                ')'|']'|'}' => {
+                    self.read_closing_bracket(first_char, &mut stack)?;
+                    self.column_number += 1;
+                },
+
+                _ => {
+                    match stack.last_mut().expect("Liszp: unreachable error 3") {
+                        ValueStack::List { vals, .. } => {
+                            vals.push(self.read_atom(token_string)?);
+                            self.column_number += token_string.len();
+                        },
+
+                        _ => unreachable!()
+                    }
+                }
+            }
+        }
+
+        Ok(stack.pop().unwrap())
+    }
+
+
+    fn value_stack_to_value(value_stack: &ValueStack) -> Rc<Value> {
+        /* Recursively turns ValueStacks into Values */
+
+        match value_stack {
+            ValueStack::Atom(atom) => atom.clone(),
+
+            ValueStack::List { vals, .. } => {
+                let mut list = Value::Nil.rc();
+
+                for v in vals.iter().rev() {
+                    list = Value::cons(&Self::value_stack_to_value(v), &list).rc()
+                }
+
+                list
+            }
+        }
+    }
 }
