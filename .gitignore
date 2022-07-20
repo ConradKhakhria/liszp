@@ -1,5 +1,5 @@
-examples/scratch.lzp
-examples/test
-file.txt
 target/*
 src/old_*
+examples/test
+file.txt
+examples/scratch.lzp
