@@ -94,7 +94,7 @@ impl CPSConverter {
         } else if components[0].name() == "&unquote" {
             if components.len() == 2 {
                 self.recursive_convert_expr(&components[1])?;
-                Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+                Ok(self.create_continuation_label())
             } else {
                 new_error!("Unquote expressions must contain exactly 1 argument").into()
             }
@@ -146,6 +146,13 @@ impl CPSConverter {
         } else {
             converted_expression
         }
+    }
+
+
+    fn create_continuation_label(&self) -> Rc<Value> {
+        /* Creates a numbered continuation label */
+
+        Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc()
     }
 
 
@@ -241,10 +248,10 @@ impl CPSConverter {
 
         self.dfs_expr_components.push(new_expression.clone());
 
-        Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+        Ok(self.create_continuation_label())
     }
 
-    
+
     fn recursive_convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Collects the components of an expression via depth-first search
          *
@@ -277,8 +284,8 @@ impl CPSConverter {
                  }
  
                  self.dfs_expr_components.push(Value::cons_list(&component_labels));
- 
-                 Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+
+                 Ok(self.create_continuation_label())
              }
          }
      }
