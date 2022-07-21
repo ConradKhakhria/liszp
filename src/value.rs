@@ -177,8 +177,8 @@ impl std::fmt::Display for Value {
             Value::Cons { .. } => {
                 format!("({})", Value::print_list(self))
             },
-            Value::Quote(xs) => {
-                format!("'({})", Value::print_list(xs))
+            Value::Quote(v) => {
+                format!("'{}", v)
             },
             Value::Nil => {
                 "nil".into()
