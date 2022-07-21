@@ -1,7 +1,8 @@
 use crate::{
-    value::Value,
     error::Error,
     eval::Evaluator,
+    refcount_list,
+    value::Value
 };
 
 use std::{
@@ -20,15 +21,20 @@ struct Macro<'v> {
 
 
 impl<'s> Macro<'s> {
-    fn to_unevaluated_value(&self, supplied_parameters: &Vec<&'s str>) -> Rc<Value> {
-        /* Converts this macro definition to a value to be evaluated */
+    fn to_function(&self) -> Rc<Value> {
+        /* Creates a function out of the macro */
 
+        let mut args = vec![];
 
+        for arg in self.args.iter() {
+            args.push(Value::Name(arg.to_string()).rc())
+        }
 
-
-
-
-        todo!()
+        refcount_list![
+            Value::Name("&lambda".into()).rc(),
+            Value::cons_list(&args),
+            self.body.clone()
+        ]
     }
 }
 
@@ -62,7 +68,9 @@ impl<'v> MacroExpander<'v> {
                 if components.is_empty() {
                     value.clone()
                 } else if let Some(m) = self.macros.get(&components[0].name()) {
-                    todo!()
+                    let args = &components[1..];
+
+                    self.evaluate_macro(m.to_function(), args)
                 } else {
                     let new_components = components.iter()
                                             .map(|v|self.expand_macros(v))
@@ -77,6 +85,13 @@ impl<'v> MacroExpander<'v> {
     }
 
 
+    fn evaluate_macro(&mut self, macro_function: Rc<Value>, args: &[Rc<Value>]) -> Rc<Value> {
+        /* Evaluates a macro function */
+
+        todo!()
+    }
+
+
     pub fn macro_expand_values(&mut self) -> Result<Vec<Rc<Value>>, Error> {
         /* Returns all the values with their (self-defined) macros expanded */
 
@@ -88,11 +103,7 @@ impl<'v> MacroExpander<'v> {
                     self.macros.insert(m.name, m);
                 },
 
-                None => {
-                    let macro_expanded = self.expand_macros(value);
-
-                    macro_expanded_values.push(value.clone())
-                }
+                None => macro_expanded_values.push(self.expand_macros(value))
             }
         }
 
@@ -109,7 +120,7 @@ impl<'v> MacroExpander<'v> {
 }
 
 
-pub fn expand_macros(values: &Vec<Rc<Value>>) -> Vec<Rc<Value>> {
+pub fn expand_macros(values: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
     /* Expands all macros in a list of exprs */
 
     let mut macro_expander = MacroExpander::new(values);
