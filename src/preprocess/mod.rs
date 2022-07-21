@@ -3,4 +3,4 @@ pub mod fmt;
 pub mod macros;
 pub mod preprocessor;
 
-pub use preprocessor::preprocess as preprocess;
+pub use preprocessor::Preprocessor as Preprocessesor;
