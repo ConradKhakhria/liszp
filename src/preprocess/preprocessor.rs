@@ -24,7 +24,7 @@ impl Preprocessor {
     }
 
 
-    pub fn preprocess_program(&mut self, exprs: Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
+    pub fn preprocess_program(&mut self, exprs: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
         /* Preprocesses the constituent expressions of a program */
 
         let mut preprocessed = vec![];
@@ -40,14 +40,4 @@ impl Preprocessor {
 
         Ok(preprocessed)
     }
-}
-
-
-pub fn preprocess(expr: Rc<Value>) -> Result<Rc<Value>, Error> {
-    /* Preprocesses a value */
-
-    let formatted = fmt::format_names(&expr);
-    let cps_converted = cps::convert_expr(&formatted);
-
-    cps_converted
 }
