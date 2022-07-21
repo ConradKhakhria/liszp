@@ -80,6 +80,7 @@ impl CPSConverter {
 
     /* CPS conversion */
 
+
     fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* DFS for unquote expressions */
 
@@ -105,6 +106,45 @@ impl CPSConverter {
             }
 
             Ok(Value::cons_list(&new_components))
+        }
+    }
+
+
+    pub fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
+        /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
+
+        let mut converted_expression = self.continuation.clone();
+        let mut atomic = true;
+
+        // We start at the last expression to be evaluated and build the previous continuations
+        // around it.
+        for (continuation_number, expr) in self.dfs_expr_components.iter().enumerate().rev() {
+            if let Value::Cons { car, cdr } = &**expr {
+                let continuation = if atomic {
+                    atomic = false;
+                    converted_expression
+                } else {
+                    refcount_list![
+                        Value::Name("&lambda".into()).rc(),
+                        Value::Name(format!("@@k{}", continuation_number)).rc(),
+                        converted_expression
+                    ]
+                };
+
+                converted_expression = Value::cons(
+                    car,
+                    &Value::cons(&continuation, cdr).rc()
+                ).rc();
+            }
+        }
+
+        if atomic {
+            refcount_list![
+                converted_expression,
+                original_value.clone()
+            ]
+        } else {
+            converted_expression
         }
     }
 
@@ -161,45 +201,6 @@ impl CPSConverter {
     }
 
 
-    fn recursive_convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
-       /* Collects the components of an expression via depth-first search
-        *
-        * Returns
-        * -------
-        * expr, but with its components replaced by numbered continuation
-        * variables.
-        */
-
-        let components = match expr.to_list() {
-            Some(xs) => {
-                if xs.is_empty() {
-                    return Ok(Value::Nil.rc())
-                } else {
-                    xs
-                }
-            },
-            None => return Ok(expr.clone())
-        };
-
-        match components[0].name().as_str() {
-            "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => self.convert_quote(&components),
-            _ => {
-                let mut component_labels = vec![ components[0].clone() ];
-
-                // depth-first collection of sub-expressions
-                for comp in components[1..].iter() {
-                    component_labels.push(self.recursive_convert_expr(comp)?);
-                }
-
-                self.dfs_expr_components.push(Value::cons_list(&component_labels));
-
-                Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
-            }
-        }
-    }
-
-
     pub fn convert_lambda(components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a lambda expression to continuation-passing style */
     
@@ -243,44 +244,44 @@ impl CPSConverter {
         Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
     }
 
-
-    pub fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
-        /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
-
-        let mut converted_expression = self.continuation.clone();
-        let mut atomic = true;
-
-        // We start at the last expression to be evaluated and build the previous continuations
-        // around it.
-        for (continuation_number, expr) in self.dfs_expr_components.iter().enumerate().rev() {
-            if let Value::Cons { car, cdr } = &**expr {
-                let continuation = if atomic {
-                    atomic = false;
-                    converted_expression
-                } else {
-                    refcount_list![
-                        Value::Name("&lambda".into()).rc(),
-                        Value::Name(format!("@@k{}", continuation_number)).rc(),
-                        converted_expression
-                    ]
-                };
-
-                converted_expression = Value::cons(
-                    car,
-                    &Value::cons(&continuation, cdr).rc()
-                ).rc();
-            }
-        }
-
-        if atomic {
-            refcount_list![
-                converted_expression,
-                original_value.clone()
-            ]
-        } else {
-            converted_expression
-        }
-    }
+    
+    fn recursive_convert_expr(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* Collects the components of an expression via depth-first search
+         *
+         * Returns
+         * -------
+         * expr, but with its components replaced by numbered continuation
+         * variables.
+         */
+ 
+         let components = match expr.to_list() {
+             Some(xs) => {
+                 if xs.is_empty() {
+                     return Ok(Value::Nil.rc())
+                 } else {
+                     xs
+                 }
+             },
+             None => return Ok(expr.clone())
+         };
+ 
+         match components[0].name().as_str() {
+             "&lambda" => Self::convert_lambda(&components),
+             "&quote"  => self.convert_quote(&components),
+             _ => {
+                 let mut component_labels = vec![ components[0].clone() ];
+ 
+                 // depth-first collection of sub-expressions
+                 for comp in components[1..].iter() {
+                     component_labels.push(self.recursive_convert_expr(comp)?);
+                 }
+ 
+                 self.dfs_expr_components.push(Value::cons_list(&component_labels));
+ 
+                 Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+             }
+         }
+     }
 }
 
 
