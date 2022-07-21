@@ -65,6 +65,53 @@ impl MacroExpander {
     }
 
 
+    pub fn expand_macros(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
+       /* Expands all macros in an expression
+        *
+        * Returns
+        * -------
+        * - Err(..)      : an error, if one occurs
+        * - Ok(None)     : if expr is a macro defintion
+        * - Ok(Some(..)) : an expression with all macros expanded
+        */
+
+        if let Some(new_macro) = self.parse_macro_definition(expr)? {
+            self.add_macro(new_macro)?;
+            return Ok(None);
+        }
+
+        match expr.to_list() {
+            Some(components) => {
+                if components.is_empty() {
+                   return Ok(Some(expr.clone()));
+                }
+
+                match self.macros.get(&components[0].name()) {
+                    Some(_m) => {
+                        println!("{}", expr);
+                        todo!();
+                    }
+
+                    None => {
+                        let mut new_components = vec![];
+
+                        for comp in components.iter() {
+                            match self.expand_macros(comp)? {
+                                Some(v) => new_components.push(v),
+                                None => return new_error!("Cannot define a macro inside an expression").into()
+                            }
+                        }
+
+                        Ok(Some(Value::cons_list(&new_components)))
+                    }
+                }
+            }
+
+            None => Ok(Some(expr.clone()))
+        }
+    }
+
+
     fn add_macro(&mut self, m: Macro) -> Result<(), Error> {
         /* Adds a macro to the scope */
 
@@ -77,43 +124,12 @@ impl MacroExpander {
     }
 
 
-    fn expand_macros_in_expression(&mut self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* Returns value but with all macros expanded */
-
-        match value.to_list() {
-            Some(components) => {
-                if components.is_empty() {
-                   return Ok(value.clone());
-                }
-
-                match self.macros.get(&components[0].name()) {
-                    Some(m) => {
-                        todo!()
-                    },
-
-                    None => {
-                        let mut new_components = vec![];
-
-                        for comp in components.iter() {
-                            new_components.push(self.expand_macros_in_expression(comp)?);
-                        }
-
-                        Ok(Value::cons_list(&new_components))
-                    }
-                }
-            }
-
-            None => Ok(value.clone())
-        }
-    }
-
-
     fn parse_macro_definition(&mut self, expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
         /* Attempts to parse a macro definition */
 
         let components = match expr.to_list() {
             Some(xs) => xs,
-            None => unreachable!()
+            None => return Ok(None)
         };
 
         if components.is_empty() || components[0].name() != "defmacro" {
@@ -155,27 +171,4 @@ impl MacroExpander {
             }
         ))
     }
-}
-
-
-pub fn expand_macros(values: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
-    /* Expands all macros in a list of exprs */
-
-    let mut macro_expander = MacroExpander::new();
-    let mut macro_expanded_values = vec![];
-
-    for value in values.iter() {
-        match macro_expander.parse_macro_definition(value)? {
-            Some(m) => {
-                macro_expander.add_macro(m)?;
-            },
-
-            None => {
-                let macro_expanded = macro_expander.expand_macros_in_expression(value)?;
-                macro_expanded_values.push(macro_expanded);
-            }
-        }
-    }
-
-    Ok(macro_expanded_values)
 }
