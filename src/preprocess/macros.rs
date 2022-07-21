@@ -59,10 +59,15 @@ impl MacroExpander {
     }
 
 
-    fn add_macro(&mut self, m: &Macro) -> Result<(), Error> {
+    fn add_macro(&mut self, m: Macro) -> Result<(), Error> {
         /* Adds a macro to the scope */
 
+        let macro_name = m.name.clone();
 
+        match self.macros.insert(macro_name.clone(), m) {
+            Some(_) => new_error!("macro '{}' has already been defined", macro_name).into(),
+            None => Ok(())
+        }
     }
 
 
@@ -90,7 +95,7 @@ pub fn expand_macros(values: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
     for value in values.iter() {
         match macro_expander.parse_macro_definition(value)? {
             Some(m) => {
-                macro_expander.add_macro(&m)?;
+                macro_expander.add_macro(m)?;
             },
 
             None => {
