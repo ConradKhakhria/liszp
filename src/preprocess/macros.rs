@@ -15,8 +15,8 @@ use std::{
 /* Macro struct */
 
 struct Macro {
-    name: String,
-    args: Vec<String>,
+    name: Rc<Value>,
+    args: Rc<Value>,
     body: Rc<Value>
 }
 
@@ -25,15 +25,9 @@ impl Macro {
     fn to_function(&self) -> Rc<Value> {
         /* Creates a function out of the macro */
 
-        let mut args = vec![];
-
-        for arg in self.args.iter() {
-            args.push(Value::Name(arg.to_string()).rc())
-        }
-
         refcount_list![
             Value::Name("&lambda".into()).rc(),
-            Value::cons_list(&args),
+            self.args.clone(),
             self.body.clone()
         ]
     }
@@ -62,9 +56,9 @@ impl MacroExpander {
     fn add_macro(&mut self, m: Macro) -> Result<(), Error> {
         /* Adds a macro to the scope */
 
-        let macro_name = m.name.clone();
+        let macro_name = m.name.name();
 
-        match self.macros.insert(macro_name.clone(), m) {
+        match self.macros.insert(m.name.name(), m) {
             Some(_) => new_error!("macro '{}' has already been defined", macro_name).into(),
             None => Ok(())
         }
@@ -81,7 +75,49 @@ impl MacroExpander {
     fn parse_macro_definition(&mut self, expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
         /* Attempts to parse a macro definition */
 
-        todo!()
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => unreachable!()
+        };
+
+        if components.is_empty() || components[0].name() != "&defmacro" {
+            return Ok(None);
+        }
+
+        if components.len() != 3 {
+            return new_error!("expected syntax (defmacro <macro-signature> <macro-body>").into();
+        }
+
+        /* Parse args */
+
+        let signature_components = match components[1].to_list() {
+            Some(xs) => xs,
+            None => return new_error!("expected the macro signature to be a list (<name> <args>..)").into()
+        };
+
+        for comp in signature_components.iter() {
+            match &**comp {
+                Value::Name(_) => {},
+                _ => return new_error!("the macro signature should consist only of names").into()
+            }
+        }
+
+        let (name, args) = match &*Value::cons_list(&signature_components) {
+            Value::Cons { car, cdr } => (car.clone(), cdr.clone()),
+            _ => unreachable!()
+        };
+
+        /* Parse body */
+
+        let body = components[2].clone();
+
+        Ok(Some(
+            Macro {
+                name,
+                args,
+                body
+            }
+        ))
     }
 }
 
