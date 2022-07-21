@@ -273,8 +273,9 @@ impl CPSConverter {
          };
  
          match components[0].name().as_str() {
-             "&lambda" => Self::convert_lambda(&components),
-             "&quote"  => self.convert_quote(&components),
+            "&defmacro" => Ok(expr.clone()),
+            "&lambda" => Self::convert_lambda(&components),
+            "&quote"  => self.convert_quote(&components),
              _ => {
                  let mut component_labels = vec![ components[0].clone() ];
  
