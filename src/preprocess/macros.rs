@@ -2,6 +2,7 @@ use crate::{
     error::Error,
     eval::Evaluator,
     new_error,
+    preprocess::cps,
     refcount_list,
     value::Value
 };
@@ -22,14 +23,25 @@ struct Macro {
 
 
 impl Macro {
-    fn to_function(&self) -> Rc<Value> {
-        /* Creates a function out of the macro */
+    fn to_executable_expression(&self, supplied_args: &[Rc<Value>]) -> Rc<Value> {
+        /* Creates an executable expression from self and supplied arguments */
 
-        refcount_list![
+        let macro_as_function = refcount_list![
             Value::Name("&lambda".into()).rc(),
             self.args.clone(),
             self.body.clone()
-        ]
+        ];
+
+        let mut quoted_args = Vec::with_capacity(supplied_args.len());
+
+        for arg in supplied_args.iter() {
+            quoted_args.push(Value::Quote(arg.clone()).rc());
+        }
+
+        Value::Cons {
+            car: macro_as_function,
+            cdr: Value::cons_list(&quoted_args)
+        }.rc()
     }
 }
 
@@ -65,10 +77,34 @@ impl MacroExpander {
     }
 
 
-    fn expand_macros(&mut self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    fn expand_macros_in_expression(&mut self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Returns value but with all macros expanded */
 
-        todo!()
+        match value.to_list() {
+            Some(components) => {
+                if components.is_empty() {
+                   return Ok(value.clone());
+                }
+
+                match self.macros.get(&components[0].name()) {
+                    Some(m) => {
+                        todo!()
+                    },
+
+                    None => {
+                        let mut new_components = vec![];
+
+                        for comp in components.iter() {
+                            new_components.push(self.expand_macros_in_expression(comp)?);
+                        }
+
+                        Ok(Value::cons_list(&new_components))
+                    }
+                }
+            }
+
+            None => Ok(value.clone())
+        }
     }
 
 
@@ -135,7 +171,7 @@ pub fn expand_macros(values: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
             },
 
             None => {
-                let macro_expanded = macro_expander.expand_macros(value)?;
+                let macro_expanded = macro_expander.expand_macros_in_expression(value)?;
                 macro_expanded_values.push(macro_expanded);
             }
         }
