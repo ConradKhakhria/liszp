@@ -83,9 +83,29 @@ impl CPSConverter {
     fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* DFS for unquote expressions */
 
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => return Ok(expr.clone())
+        };
 
+        if components.is_empty() {
+            Ok(expr.clone())
+        } else if components[0].name() == "&unquote" {
+            if components.len() == 2 {
+                self.recursive_convert_expr(&components[1])?;
+                Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
+            } else {
+                new_error!("Unquote expressions must contain exactly 1 argument").into()
+            }
+        } else {
+            let mut new_components = vec![];
 
-        todo!()
+            for comp in components.iter() {
+                new_components.push(self.apply_unquote(comp)?);
+            }
+
+            Ok(Value::cons_list(&new_components))
+        }
     }
 
 
