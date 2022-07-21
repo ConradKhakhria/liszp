@@ -212,9 +212,10 @@ impl Evaluator {
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
-        let function_components = self.resolve(function)?
-                                                   .to_list()
-                                                   .expect("Liszp: function should have syntax (lambda <args> <body>)");
+        let function_components = match self.resolve(function)?.to_list() {
+            Some(xs) => xs,
+            None => return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into()
+        };
 
         if function_components.len() != 3 {
             return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into();
