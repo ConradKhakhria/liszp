@@ -2,7 +2,10 @@ use crate::{
     read,
     error::Error,
     new_error,
-    preprocess::preprocess,
+    preprocess::{
+        preprocess,
+        Preprocessesor
+    },
     refcount_list,
     value::Value
 };
@@ -114,9 +117,11 @@ impl Evaluator {
 
         let exprs = read::read(&source, &filename)?;
 
+        let mut preprocessor = Preprocessesor::new();
+        let exprs = preprocessor.preprocess_program(&exprs)?;
+
         for expr in exprs.iter() {
-            let preprocessed = preprocess(expr.clone())?;
-            let evaluated = self.eval(&preprocessed)?;
+            let evaluated = self.eval(expr)?;
 
             self.evaluated.push(evaluated);
         }
@@ -130,14 +135,15 @@ impl Evaluator {
 
         let exprs = read::read(&source, &filename.into())?;
 
-        let expr = match exprs.as_slice() {
+        let mut preprocessor = Preprocessesor::new();
+        let preprocessed = preprocessor.preprocess_program(&exprs)?;
+
+        let expr = match preprocessed.as_slice() {
             [x] => x,
             xs => return new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
         };
 
-        let preprocessed = preprocess(expr.clone())?;
-
-        self.eval(&preprocessed)
+        self.eval(expr)
     }
 
 
