@@ -80,6 +80,15 @@ impl CPSConverter {
 
     /* CPS conversion */
 
+    fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* DFS for unquote expressions */
+
+
+
+        todo!()
+    }
+
+
     fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* convert_expr() but with an explicit continuation for the entire expr */
 
@@ -154,7 +163,7 @@ impl CPSConverter {
 
         match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => Ok(self.convert_quote(expr)),
+            "&quote"  => self.convert_quote(&components),
             _ => {
                 let mut component_labels = vec![ components[0].clone() ];
 
@@ -196,12 +205,22 @@ impl CPSConverter {
     }
 
 
-    pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Rc<Value> {
+    pub fn convert_quote(&mut self, components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Converts a quoted expression to continuation-passing style */
 
-        self.dfs_expr_components.push(expr.clone());
+        if components.len() != 2 {
+            return new_error!("unquote expressions take exactly 2 arguments").into();
+        }
 
-        Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc()
+        let quoted_expression = self.apply_unquote(&components[1])?;
+        let new_expression = refcount_list![
+            &components[0],
+            &quoted_expression
+        ];
+
+        self.dfs_expr_components.push(new_expression.clone());
+
+        Ok(Value::Name(format!("@@k{}", self.dfs_expr_components.len() - 1)).rc())
     }
 
 
