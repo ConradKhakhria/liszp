@@ -273,7 +273,6 @@ impl CPSConverter {
          };
  
          match components[0].name().as_str() {
-            "&defmacro" => Ok(expr.clone()),
             "&lambda" => Self::convert_lambda(&components),
             "&quote"  => self.convert_quote(&components),
              _ => {
