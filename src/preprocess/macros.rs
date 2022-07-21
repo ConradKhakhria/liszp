@@ -116,7 +116,7 @@ impl MacroExpander {
             None => unreachable!()
         };
 
-        if components.is_empty() || components[0].name() != "&defmacro" {
+        if components.is_empty() || components[0].name() != "defmacro" {
             return Ok(None);
         }
 
