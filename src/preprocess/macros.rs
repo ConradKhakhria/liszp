@@ -1,3 +1,9 @@
+/* This module is currently parked 
+ *
+ * While the evaluator is reconfigured to include preprocessing,
+ * This module will exist but not be used.
+ */
+
 use crate::{
     error::Error,
     eval::Evaluator,
@@ -87,8 +93,9 @@ impl MacroExpander {
                 }
 
                 match self.macros.get(&components[0].name()) {
-                    Some(_m) => {
-                        println!("{}", expr);
+                    Some(m) => {
+                        println!("expr:       {}", expr);
+                        println!("macro body: {}", m.body);
                         todo!();
                     }
 
