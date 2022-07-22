@@ -24,21 +24,6 @@ impl Preprocessor {
     }
 
 
-    pub fn preprocess_program(&mut self, exprs: &Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
-        /* Preprocesses the constituent expressions of a program */
-
-        let mut preprocessed = vec![];
-
-        for expr in exprs.iter() {
-            if let Some(v) = self.preprocess(expr)? {
-                preprocessed.push(v);
-            }
-        }
-
-        Ok(preprocessed)
-    }
-
-
     pub fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
         /* Preprocesses an expression */
 
