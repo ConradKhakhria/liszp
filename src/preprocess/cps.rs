@@ -7,7 +7,7 @@ use crate::{
 
 use std::rc::Rc;
 
-struct CPSConverter {
+pub struct CPSConverter {
     dfs_expr_components: Vec<Rc<Value>>,
     continuation: Rc<Value>,
 }
