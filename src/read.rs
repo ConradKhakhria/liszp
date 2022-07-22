@@ -118,6 +118,8 @@ impl<'s> Reader<'s> {
             ("false", _) => Value::Bool(false),
     
             (_, '"') => Value::String(atom.into()),
+
+            (_, '\'') => Value::String(format!("{}", atom)),
     
             ("nil"|"null", _) => Value::Nil,
     
