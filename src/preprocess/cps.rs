@@ -276,10 +276,10 @@ impl CPSConverter {
             "&lambda" => Self::convert_lambda(&components),
             "&quote"  => self.convert_quote(&components),
              _ => {
-                 let mut component_labels = vec![ components[0].clone() ];
+                 let mut component_labels = vec![];
  
                  // depth-first collection of sub-expressions
-                 for comp in components[1..].iter() {
+                 for comp in components.iter() {
                      component_labels.push(self.recursive_convert_expr(comp)?);
                  }
  
