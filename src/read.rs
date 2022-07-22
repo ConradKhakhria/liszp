@@ -32,7 +32,7 @@ impl<'s> Reader<'s> {
                 "#.*?\n|",
                 r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
                 r"[a-zA-Z_\-\+\*/=<>:\.@%\&\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-                "\".*?\"|\'.*?\'|\n|,|",
+                "\".*?\"|\'.\'|\'|\n|,|",
                 r"\(|\)|\[|\]|\{|\}"
             )).unwrap();
         }
@@ -68,6 +68,13 @@ impl<'s> Reader<'s> {
                 b @ ("("|"["|"{") => self.read_list(b),
 
                 b @ (")"|"]"|"}") => self.match_closing_bracket(b),
+
+                "'" => {
+                    match self.read()? {
+                        Some(v) => Ok(Some(Value::Quote(v).rc())),
+                        None => Ok(None)
+                    }
+                }
 
                 atom => self.read_atom(atom)
             }
