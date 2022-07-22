@@ -156,7 +156,7 @@ impl CPSConverter {
     }
 
 
-    fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    pub fn convert_expr_with_continuation(expr: &Rc<Value>, continuation: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* convert_expr() but with an explicit continuation for the entire expr */
 
         let mut converter = Self::new(continuation);
