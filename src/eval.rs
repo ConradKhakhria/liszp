@@ -8,7 +8,6 @@ use crate::{
 };
 use std::{
     collections::HashMap,
-    fmt::Display,
     io::Write,
     path::Path,
     rc::Rc,
@@ -104,7 +103,7 @@ impl Evaluator {
     }
 
 
-    pub fn eval_file<P: AsRef<Path> + Display>(&mut self, filepath: P) -> Result<(), Error> {
+    pub fn eval_file<P: AsRef<Path> + ToString>(&mut self, filepath: P) -> Result<(), Error> {
        /* Evaluates a source file */
 
         let filename = filepath.to_string();
@@ -131,16 +130,18 @@ impl Evaluator {
         /* Evaluates a source string into one value */
 
         let exprs = read::read(&source, &filename.into())?;
-
         let mut preprocessor = Preprocessesor::new();
-        let preprocessed = preprocessor.preprocess_program(&exprs)?;
 
-        let expr = match preprocessed.as_slice() {
-            [x] => x,
-            xs => return new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
-        };
+        match exprs.as_slice() {
+            [x] => {
+                match preprocessor.preprocess(x)? {
+                    Some(v) => self.eval(&v),
+                    None => Ok(Value::Nil.rc())
+                }
+            },
 
-        self.eval(expr)
+            xs => new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
+        }
     }
 
 
