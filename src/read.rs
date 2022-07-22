@@ -1,6 +1,7 @@
 use crate::{
     error::Error,
     new_error,
+    refcount_list,
     value::Value
 };
 
@@ -71,7 +72,20 @@ impl<'s> Reader<'s> {
 
                 "'" => {
                     match self.read()? {
-                        Some(v) => Ok(Some(Value::Quote(v).rc())),
+                        Some(v) => {
+                            Ok(Some(refcount_list![ Value::Name("quote".into()).rc(), v ]))
+                        },
+
+                        None => Ok(None)
+                    }
+                }
+
+                "," => {
+                    match self.read()? {
+                        Some(v) => {
+                            Ok(Some(refcount_list![ Value::Name("unquote".into()).rc(), v ]))
+                        },
+
                         None => Ok(None)
                     }
                 }
