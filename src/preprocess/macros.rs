@@ -8,7 +8,6 @@ use crate::{
     error::Error,
     eval::Evaluator,
     new_error,
-    preprocess::cps,
     refcount_list,
     value::Value
 };
@@ -21,6 +20,7 @@ use std::{
 
 /* Macro struct */
 
+#[allow(dead_code)]
 struct Macro {
     name: Rc<Value>,
     args: Rc<Value>,
@@ -54,6 +54,7 @@ impl Macro {
 
 /* Macro expander */
 
+#[allow(dead_code)]
 pub struct MacroExpander {
     evaluator: Evaluator,
     macros: HashMap<String, Macro>,
@@ -61,6 +62,7 @@ pub struct MacroExpander {
 
 
 impl MacroExpander {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         /* Creates a new MacroExpander */
 
@@ -71,6 +73,7 @@ impl MacroExpander {
     }
 
 
+    #[allow(dead_code)]
     pub fn expand_macros(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
        /* Expands all macros in an expression
         *
@@ -93,10 +96,8 @@ impl MacroExpander {
                 }
 
                 match self.macros.get(&components[0].name()) {
-                    Some(m) => {
-                        println!("expr:       {}", expr);
-                        println!("macro body: {}", m.body);
-                        todo!();
+                    Some(_m) => {
+                        return new_error!("Macro definitions have not yet been implemented").into();
                     }
 
                     None => {
@@ -119,6 +120,7 @@ impl MacroExpander {
     }
 
 
+    #[allow(dead_code)]
     fn add_macro(&mut self, m: Macro) -> Result<(), Error> {
         /* Adds a macro to the scope */
 
@@ -131,6 +133,7 @@ impl MacroExpander {
     }
 
 
+    #[allow(dead_code)]
     fn parse_macro_definition(&mut self, expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
         /* Attempts to parse a macro definition */
 
