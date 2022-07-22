@@ -2,7 +2,7 @@ use crate::{
     read,
     error::Error,
     new_error,
-    preprocess::Preprocessesor,
+    preprocess::{ cps::CPSConverter, Preprocessesor },
     refcount_list,
     value::Value
 };
@@ -456,10 +456,12 @@ impl Evaluator {
 
         match args.as_slice() {
             [continuation, quoted_value] => {
-                let value = if let Value::Quote(v) = &*self.resolve(quoted_value)? {
-                    v.clone()
-                } else {
-                    quoted_value.clone()
+                let value = match &*self.resolve(quoted_value)? {
+                    Value::Quote(v) => {
+                        CPSConverter::convert_expr_with_continuation(v, continuation)?
+                    },
+
+                    _ => quoted_value.clone()
                 };
 
                 Ok(refcount_list![ continuation, &value ])
