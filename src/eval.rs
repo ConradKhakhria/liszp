@@ -62,7 +62,11 @@ impl Evaluator {
     pub fn eval(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Evaluates an expression in Env */
 
-        let mut value = expr.clone();
+        let mut preprocessor = Preprocessesor::new();
+        let mut value = match preprocessor.preprocess(expr)? {
+            Some(v) => v,
+            None => return Ok(Value::Nil.rc())
+        };
 
         while let Value::Cons { car: function, cdr: args  } = &*value {
             let function_name = function.name();
@@ -111,12 +115,7 @@ impl Evaluator {
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
 
-        let exprs = read::read(&source, &filename)?;
-
-        let mut preprocessor = Preprocessesor::new();
-        let exprs = preprocessor.preprocess_program(&exprs)?;
-
-        for expr in exprs.iter() {
+        for expr in read::read(&source, &filename)?.iter() {
             let evaluated = self.eval(expr)?;
 
             self.evaluated.push(evaluated);
@@ -130,16 +129,9 @@ impl Evaluator {
         /* Evaluates a source string into one value */
 
         let exprs = read::read(&source, &filename.into())?;
-        let mut preprocessor = Preprocessesor::new();
 
         match exprs.as_slice() {
-            [x] => {
-                match preprocessor.preprocess(x)? {
-                    Some(v) => self.eval(&v),
-                    None => Ok(Value::Nil.rc())
-                }
-            },
-
+            [x] => self.eval(x),
             xs => new_error!("Can only evaluate one expression at a time, not {}", xs.len()).into()
         }
     }
