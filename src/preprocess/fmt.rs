@@ -7,7 +7,11 @@ pub fn format_names(value: &Rc<Value>) -> Rc<Value> {
 
     return match &**value {
         Value::Name(name) => {
-            Value::Name(format!("&{}", name)).rc()
+            match name.chars().next() {
+                Some('&') => value.clone(),
+                Some(_)   => Value::Name(format!("&{}", name)).rc(),
+                None      => value.clone()
+            }
         },
 
         Value::Cons { car, cdr } => {
