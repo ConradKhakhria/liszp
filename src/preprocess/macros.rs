@@ -97,8 +97,12 @@ impl MacroExpander {
                 }
 
                 match self.macros.get(&components[0].name()) {
-                    Some(_m) => {
-                        return new_error!("Macro definitions have not yet been implemented").into();
+                    Some(m) => {
+                        let supplied_args = &components[1..];
+                        let executable_expression = m.to_executable_expression(supplied_args);
+
+                        self.evaluator.eval(&executable_expression)
+                                      .map(|v| Some(v.clone()))
                     }
 
                     None => {
