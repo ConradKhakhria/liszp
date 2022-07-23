@@ -57,7 +57,6 @@ impl Macro {
 
 #[allow(dead_code)]
 pub struct MacroExpander {
-    evaluator: Evaluator,
     macros: HashMap<String, Macro>,
 }
 
@@ -68,14 +67,13 @@ impl MacroExpander {
         /* Creates a new MacroExpander */
 
         MacroExpander {
-            evaluator: Evaluator::new(),
             macros: HashMap::new()
         }
     }
 
 
     #[allow(dead_code)]
-    pub fn expand_macros(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
+    pub fn expand_macros(&mut self, expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Option<Rc<Value>>, Error> {
        /* Expands all macros in an expression
         *
         * Returns
@@ -101,15 +99,15 @@ impl MacroExpander {
                         let supplied_args = &components[1..];
                         let executable_expression = m.to_executable_expression(supplied_args);
 
-                        self.evaluator.eval(&executable_expression)
-                                      .map(|v| Some(v.clone()))
+                        evaluator.eval(&executable_expression)
+                                 .map(|v| Some(v.clone()))
                     }
 
                     None => {
                         let mut new_components = vec![];
 
                         for comp in components.iter() {
-                            match self.expand_macros(comp)? {
+                            match self.expand_macros(comp, evaluator)? {
                                 Some(v) => new_components.push(v),
                                 None => return new_error!("Cannot define a macro inside an expression").into()
                             }

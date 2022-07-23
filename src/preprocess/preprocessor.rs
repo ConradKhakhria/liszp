@@ -1,5 +1,6 @@
 use crate::{
     error::Error,
+    eval::Evaluator,
     preprocess::{ cps, fmt, macros },
     value::Value
 };
@@ -24,10 +25,10 @@ impl Preprocessor {
     }
 
 
-    pub fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Option<Rc<Value>>, Error> {
+    pub fn preprocess(&mut self, expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Option<Rc<Value>>, Error> {
         /* Preprocesses an expression */
 
-        if let Some(macro_expanded) = self.macro_expander.expand_macros(expr)? {
+        if let Some(macro_expanded) = self.macro_expander.expand_macros(expr, evaluator)? {
             let formatted = fmt::format_names(&macro_expanded);
             let cps_converted = cps::convert_expr(&formatted)?;
 

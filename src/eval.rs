@@ -2,7 +2,10 @@ use crate::{
     read,
     error::Error,
     new_error,
-    preprocess::{ cps::CPSConverter, Preprocessesor },
+    preprocess::{
+        cps::CPSConverter,
+        Preprocessesor
+    },
     refcount_list,
     value::Value
 };
@@ -20,15 +23,17 @@ type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
     globals: ValueMap,
-    evaluated: Vec<Rc<Value>>
+    evaluated: Vec<Rc<Value>>,
+    preprocessor: Preprocessesor
 }
 
 
 impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
+            evaluated: vec![],
             globals: HashMap::new(),
-            evaluated: vec![]
+            preprocessor: Preprocessesor::new(),
         }
     }
 
@@ -63,7 +68,7 @@ impl Evaluator {
         /* Evaluates an expression in Env */
 
         let mut preprocessor = Preprocessesor::new();
-        let mut value = match preprocessor.preprocess(expr)? {
+        let mut value = match preprocessor.preprocess(expr, self)? {
             Some(v) => v,
             None => return Ok(Value::Nil.rc())
         };
@@ -619,7 +624,7 @@ impl Evaluator {
     }
 
 
-    fn value_is_float(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+    fn value_is_float(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {   
         /* Returns whether a value is a float */
 
         match args.as_slice() {
