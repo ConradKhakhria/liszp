@@ -14,7 +14,7 @@ use std::rc::Rc;
 
 /* Macro struct */
 
-#[allow(dead_code)]
+
 pub struct Macro {
     name: Rc<Value>,
     args: Rc<Value>,
@@ -23,7 +23,6 @@ pub struct Macro {
 
 
 impl Macro {
-    #[allow(dead_code)]
     fn to_executable_expression(&self, supplied_args: &[Rc<Value>]) -> Rc<Value> {
         /* Creates an executable expression from self and supplied arguments */
 
