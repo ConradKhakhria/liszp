@@ -32,12 +32,6 @@ impl Macro {
             self.body.clone()
         ];
 
-        let mut quoted_args = Vec::with_capacity(supplied_args.len());
-
-        for arg in supplied_args.iter() {
-            quoted_args.push(arg.clone());
-        }
-
         Value::Cons {
             car: macro_as_function,
             cdr: Value::cons_list(&supplied_args)
