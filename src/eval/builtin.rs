@@ -133,7 +133,7 @@ pub fn print_value(args: &Vec<Rc<Value>>, evaluator: &Evaluator, newline: bool) 
 }
 
 
-pub fn quote_value(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
+pub fn quote_value(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
     /* Quotes a value */
 
     match args.as_slice() {
