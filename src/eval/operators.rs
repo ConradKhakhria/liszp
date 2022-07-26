@@ -71,14 +71,14 @@ fn float_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
     }
 
     match op.as_str() {
-        "&+" => reduce_over_operation!(+=),
-        "&-" => reduce_over_operation!(-=),
-        "&*" => reduce_over_operation!(*=),
-        "&/" => reduce_over_operation!(/=),
+        "+" => reduce_over_operation!(+=),
+        "-" => reduce_over_operation!(-=),
+        "*" => reduce_over_operation!(*=),
+        "/" => reduce_over_operation!(/=),
         _    => unreachable!()
     }
 
-    if op == "&-" && args.len() == 1 {
+    if op == "-" && args.len() == 1 {
         Value::Float(-result).rc()
     } else {
         Value::Float(result).rc()
@@ -106,14 +106,14 @@ fn integer_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
     }
 
     match op.as_str() {
-        "&+" => reduce_over_operation!(+=),
-        "&-" => reduce_over_operation!(-=),
-        "&*" => reduce_over_operation!(*=),
-        "&/" => reduce_over_operation!(/=),
+        "+" => reduce_over_operation!(+=),
+        "-" => reduce_over_operation!(-=),
+        "*" => reduce_over_operation!(*=),
+        "/" => reduce_over_operation!(/=),
         _    => unreachable!()
     }
 
-    if op == "&-" && args.len() == 1 {
+    if op == "-" && args.len() == 1 {
         Value::Integer(-result).rc()
     } else {
         Value::Integer(result).rc()
@@ -165,9 +165,9 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
             };
 
             let result = match op.as_str() {
-                "&and" => x && y,
-                "&or"  => x || y,
-                "&xor" => x ^ y,
+                "and" => x && y,
+                "or"  => x || y,
+                "xor" => x ^ y,
                 _      => unreachable!()
             };
 
@@ -245,12 +245,12 @@ fn float_comparison(op: &String, x: &rug::Float, y: &rug::Float) -> Rc<Value> {
     /* Compares two floats */
 
     let result = match op.as_str() {
-        "&==" => x == y,
-        "&!=" => x != y,
-        "&<"  => x < y,
-        "&>"  => x > y,
-        "&<=" => x <= y,
-        "&>=" => x >= y,
+        "==" => x == y,
+        "!=" => x != y,
+        "<"  => x < y,
+        ">"  => x > y,
+        "<=" => x <= y,
+        ">=" => x >= y,
         _     => unreachable!()
     };
 
@@ -262,12 +262,12 @@ fn integer_comparison(op: &String, x: &rug::Integer, y: &rug::Integer) -> Rc<Val
     /* Compares two integers */
 
     let result = match op.as_str() {
-        "&==" => x == y,
-        "&!=" => x != y,
-        "&<"  => x < y,
-        "&>"  => x > y,
-        "&<=" => x <= y,
-        "&>=" => x >= y,
+        "==" => x == y,
+        "!=" => x != y,
+        "<"  => x < y,
+        ">"  => x > y,
+        "<=" => x <= y,
+        ">=" => x >= y,
         _     => unreachable!()
     };
 
