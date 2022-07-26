@@ -61,50 +61,50 @@ fn add_macro(m: Macro, evaluator: &mut Evaluator) -> Result<(), Error> {
 pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     /* Expands all macros in an expression */
 
-     if let Some(new_macro) = parse_macro_definition(expr)? {
-         add_macro(new_macro, evaluator)?;
+    if let Some(new_macro) = parse_macro_definition(expr)? {
+        add_macro(new_macro, evaluator)?;
 
-         return Ok(Value::Nil.rc());
-     }
+        return Ok(Value::Nil.rc());
+    }
 
-     match expr.to_list() {
-         Some(components) => {
-             if components.is_empty() {
-                return Ok(expr.clone());
-             }
+    match expr.to_list() {
+        Some(components) => {
+            if components.is_empty() {
+               return Ok(expr.clone());
+            }
 
-             match evaluator.macros.get(&components[0].name()) {
-                 Some(m) => {
-                     let supplied_args = components[1..].to_vec();
-                     let executable_expression = m.to_executable_expression(supplied_args);
+            match evaluator.macros.get(&components[0].name()) {
+                Some(m) => {
+                    let supplied_args = components[1..].to_vec();
+                    let executable_expression = m.to_executable_expression(supplied_args);
 
-                     println!("before expansion: {}", &executable_expression);
+                    println!("before expansion: {}", &executable_expression);
 
-                     let res = evaluator.eval(&executable_expression)?;
+                    let res = evaluator.eval(&executable_expression)?;
 
-                     println!("after expansion: {}", &res);
+                    println!("after expansion: {}", &res);
 
-                     Ok(res)
-                 }
+                    Ok(res)
+                }
 
-                 None => {
-                     let mut new_components = vec![];
+                None => {
+                    let mut new_components = vec![];
 
-                     for comp in components.iter() {
-                        new_components.push(expand_macros(comp, evaluator)?);
-                     }
+                    for comp in components.iter() {
+                       new_components.push(expand_macros(comp, evaluator)?);
+                    }
 
-                     Ok(Value::cons_list(&new_components))
-                 }
-             }
-         }
+                    Ok(Value::cons_list(&new_components))
+                }
+            }
+        }
 
-         None => Ok(expr.clone())
-     }
- }
+        None => Ok(expr.clone())
+    }
+}
 
 
- fn parse_macro_definition(expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
+fn parse_macro_definition(expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
     /* Attempts to parse a macro definition */
 
     let components = match expr.to_list() {
