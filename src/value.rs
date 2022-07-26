@@ -126,13 +126,13 @@ impl Value {
         let mut cursor = xs;
 
         while let Value::Cons { car, cdr } = cursor {
-            string += &format!(" {}", *car)[..];
-            cursor  = &cdr;
+            string = format!("{}{} ", string, car);
+            cursor = cdr;
         }
 
         match cursor {
-            Value::Nil => {},
-            _ => string += &format!(" . {}", cursor)
+            Value::Nil => string = string[..string.len() - 1].to_string(),
+            _ => string = format!("{} . {}", string, cursor)
         }
 
         string
