@@ -75,13 +75,10 @@ impl Evaluator {
     fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Preprocesses an expression */
 
-        if let Some(ref macro_expanded) = macros::expand_macros(expr, self)? {
-            let cps_converted = cps::convert_expr(macro_expanded)?;
+        let macro_expanded = macros::expand_macros(expr, self)?;
+        let cps_converted = cps::convert_expr(&macro_expanded)?;
 
-            Ok(cps_converted)
-        } else {
-            Ok(Value::Nil.rc())
-        }
+        Ok(cps_converted)
     }
 
 

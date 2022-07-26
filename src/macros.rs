@@ -58,26 +58,19 @@ fn add_macro(m: Macro, evaluator: &mut Evaluator) -> Result<(), Error> {
 }
 
 
-pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Option<Rc<Value>>, Error> {
-    /* Expands all macros in an expression
-     *
-     * Returns
-     * -------
-     * - Err(..)      : an error, if one occurs
-     * - Ok(None)     : if expr is a macro defintion
-     * - Ok(Some(..)) : an expression with all macros expanded
-     */
+pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
+    /* Expands all macros in an expression */
 
      if let Some(new_macro) = parse_macro_definition(expr)? {
          add_macro(new_macro, evaluator)?;
 
-         return Ok(None);
+         return Ok(Value::Nil.rc());
      }
 
      match expr.to_list() {
          Some(components) => {
              if components.is_empty() {
-                return Ok(Some(expr.clone()));
+                return Ok(expr.clone());
              }
 
              match evaluator.macros.get(&components[0].name()) {
@@ -86,25 +79,21 @@ pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Opti
                      let executable_expression = m.to_executable_expression(supplied_args);
 
                      evaluator.eval(&executable_expression)
-                              .map(|v| Some(v.clone()))
                  }
 
                  None => {
                      let mut new_components = vec![];
 
                      for comp in components.iter() {
-                         match expand_macros(comp, evaluator)? {
-                             Some(v) => new_components.push(v),
-                             None => return new_error!("Cannot define a macro inside an expression").into()
-                         }
+                        new_components.push(expand_macros(comp, evaluator)?);
                      }
 
-                     Ok(Some(Value::cons_list(&new_components)))
+                     Ok(Value::cons_list(&new_components))
                  }
              }
          }
 
-         None => Ok(Some(expr.clone()))
+         None => Ok(expr.clone())
      }
  }
 
