@@ -81,35 +81,6 @@ impl CPSConverter {
     /* CPS conversion */
 
 
-    fn apply_unquote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* DFS for unquote expressions */
-
-        let components = match expr.to_list() {
-            Some(xs) => xs,
-            None => return Ok(expr.clone())
-        };
-
-        if components.is_empty() {
-            Ok(expr.clone())
-        } else if components[0].name() == "&unquote" {
-            if components.len() == 2 {
-                self.recursive_convert_expr(&components[1])?;
-                Ok(self.create_continuation_label())
-            } else {
-                new_error!("Unquote expressions must contain exactly 1 argument").into()
-            }
-        } else {
-            let mut new_components = vec![];
-
-            for comp in components.iter() {
-                new_components.push(self.apply_unquote(comp)?);
-            }
-
-            Ok(Value::cons_list(&new_components))
-        }
-    }
-
-
     pub fn assemble_cps_expression(&self, original_value: &Rc<Value>) -> Rc<Value> {
         /* Uses CPSConverter::dfs_expr_components to build a continuation-passing style expression */
 
@@ -233,20 +204,10 @@ impl CPSConverter {
     }
 
 
-    pub fn convert_quote(&mut self, components: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+    pub fn convert_quote(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Converts a quoted expression to continuation-passing style */
 
-        if components.len() != 2 {
-            return new_error!("unquote expressions take exactly 2 arguments").into();
-        }
-
-        let quoted_expression = self.apply_unquote(&components[1])?;
-        let new_expression = refcount_list![
-            &components[0],
-            &quoted_expression
-        ];
-
-        self.dfs_expr_components.push(new_expression.clone());
+        self.dfs_expr_components.push(expr.clone());
 
         Ok(self.create_continuation_label())
     }
@@ -274,7 +235,7 @@ impl CPSConverter {
  
          match components[0].name().as_str() {
             "&lambda" => Self::convert_lambda(&components),
-            "&quote"  => self.convert_quote(&components),
+            "&quote"  => self.convert_quote(expr),
              _ => {
                  let mut component_labels = vec![];
  

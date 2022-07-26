@@ -80,16 +80,6 @@ impl<'s> Reader<'s> {
                     }
                 }
 
-                "," => {
-                    match self.read()? {
-                        Some(v) => {
-                            Ok(Some(refcount_list![ Value::Name("unquote".into()).rc(), v ]))
-                        },
-
-                        None => Ok(None)
-                    }
-                }
-
                 atom => self.read_atom(atom)
             }
         } else {
