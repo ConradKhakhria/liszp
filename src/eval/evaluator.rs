@@ -31,15 +31,6 @@ impl Evaluator {
     }
 
 
-    /* Getters */
-
-
-    #[allow(dead_code)]
-    pub fn get_globals(&self) -> &ValueMap {
-        &self.globals
-    }
-
-
     /* Env-related functions */
 
 
