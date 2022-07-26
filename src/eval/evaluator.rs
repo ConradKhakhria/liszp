@@ -1,3 +1,4 @@
+use crate::cps;
 use crate::read;
 use crate::error::Error;
 use crate::eval::{ builtin, operators };
@@ -31,6 +32,7 @@ impl Evaluator {
 
 
     /* Getters */
+
 
     #[allow(dead_code)]
     pub fn get_globals(&self) -> &ValueMap {
@@ -83,7 +85,7 @@ impl Evaluator {
         /* Preprocesses an expression */
 
         if let Some(ref macro_expanded) = macros::expand_macros(expr, self)? {
-            let cps_converted = crate::preprocess::cps::convert_expr(macro_expanded)?;
+            let cps_converted = cps::convert_expr(macro_expanded)?;
 
             Ok(cps_converted)
         } else {
