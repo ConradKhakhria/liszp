@@ -112,7 +112,6 @@ impl Evaluator {
                 "print"          => builtin::print_value(&args, self, false)?,
                 "println"        => builtin::print_value(&args, self, true)?,
                 "quote"          => builtin::quote_value(&args, self)?,
-                "quote?"         => builtin::value_is_quote(&args, self)?,
                 "str?"           => builtin::value_is_str(&args, self)?,
                 "+"|"-"|"*"|"/"  => operators::arithmetic_expression(&function_name, &args, self)?,
                 "%"              => operators::modulo(&args, self)?,

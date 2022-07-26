@@ -13,24 +13,12 @@ pub fn car(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
         [continuation, xs] => {
             let resolved = evaluator.resolve(xs)?;
 
-            let xs = match &*resolved {
-                Value::Quote(cons) => cons.clone(),
-                _ => unreachable!()
-            };
-
-            let car = match &*xs {
+            let car = match &*resolved {
                 Value::Cons { car, .. } => car,
                 _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
             };
 
-            // If car is a name or cons pair, we must quote it again
-            let potentially_quoted_car = match &**car {
-                Value::Cons {..} => Value::Quote(car.clone()).rc(),
-                Value::Name(_)   => Value::Quote(car.clone()).rc(),
-                _                => car.clone()
-            };
-
-            Ok(refcount_list![ continuation, &potentially_quoted_car ])
+            Ok(refcount_list![ continuation, car ])
         },
 
         _ => new_error!("Liszp: function 'car' takes 1 argument").into()
@@ -45,24 +33,13 @@ pub fn cdr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
         [continuation, xs] => {
             let resolved = evaluator.resolve(xs)?;
 
-            let xs = match &*resolved {
-                Value::Quote(cons) => cons.clone(),
-                _ => unreachable!()
-            };
-
-            let cdr = match &*xs {
+            let cdr = match &*resolved {
                 Value::Cons { cdr, .. } => cdr,
                 _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
             };
 
-            // If cdr is a name or cons pair, we must quote it again
-            let potentially_quoted_cdr = match &**cdr {
-                Value::Cons {..} => Value::Quote(cdr.clone()).rc(),
-                Value::Name(_)   => Value::Quote(cdr.clone()).rc(),
-                _                => cdr.clone()
-            };
 
-            Ok(refcount_list![ continuation, &potentially_quoted_cdr ])
+            Ok(refcount_list![ continuation, cdr ])
         },
 
         _ => new_error!("Liszp: function 'cdr' takes 1 argument").into()
@@ -75,24 +52,10 @@ pub fn cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, E
 
     match args.as_slice() {
         [continuation, car, cdr] => {
-            let car = evaluator.resolve(car)?;
-            let cdr = evaluator.resolve(cdr)?;
-
-            let cons_pair = Value::Quote(
-                Rc::new(Value::Cons {
-                    car: if let Value::Quote(v) = &*car {
-                        v.clone()
-                    } else {
-                        car
-                    },
-
-                    cdr: if let Value::Quote(v) = &*cdr {
-                        v.clone()
-                    } else {
-                        cdr
-                    }
-                })
-            );
+            let cons_pair = Value::Cons {
+                car: evaluator.resolve(car)?,
+                cdr: evaluator.resolve(cdr)?
+            };
 
             Ok(refcount_list![ continuation.clone(), cons_pair.rc() ])
         }
@@ -107,13 +70,7 @@ pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Va
 
     match args.as_slice() {
         [continuation, quoted_value] => {
-            let value = match &*evaluator.resolve(quoted_value)? {
-                Value::Quote(v) => {
-                    todo!();
-                },
-
-                _ => quoted_value.clone()
-            };
+            let value = todo!();
 
             Ok(refcount_list![ continuation, &value ])
         }
@@ -180,14 +137,7 @@ pub fn quote_value(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Va
     /* Quotes a value */
 
     match args.as_slice() {
-        [continuation, value] => {
-            let quoted_value = match &**value {
-                Value::Quote(_) => value.clone(),
-                _ => Value::Quote(evaluator.resolve(value)?).rc()
-            };
-
-            Ok(refcount_list![ continuation, &quoted_value ])
-        }
+        [continuation, value] => Ok(refcount_list![ continuation, value ]),
 
         _ => new_error!("Liszp: function 'quote' takes exactly one value").into()
     }
@@ -214,14 +164,7 @@ pub fn value_is_bool(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::Bool(_) => true,
                 _ => false
             };
@@ -239,14 +182,7 @@ pub fn value_is_cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::Cons {..} => true,
                 _ => false
             };
@@ -264,14 +200,7 @@ pub fn value_is_float(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::Float(_) => true,
                 _ => false
             };
@@ -289,14 +218,7 @@ pub fn value_is_int(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::Integer(_) => true,
                 _ => false
             };
@@ -314,14 +236,7 @@ pub fn value_is_nil(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::Nil => true,
                 _ => false
             };
@@ -339,11 +254,6 @@ pub fn value_is_name(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
 
     match args.as_slice() {
         [continuation, value] => {
-            let value = match &**value {
-                Value::Quote(v) => v,
-                _ => value
-            };
-
             let result = match &**value {
                 Value::Name(_) => true,
                 _ => false
@@ -357,37 +267,12 @@ pub fn value_is_name(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
 }
 
 
-pub fn value_is_quote(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
-    /* Returns whether a value is quoted */
-
-    match args.as_slice() {
-        [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
-                Value::Quote(_) => true,
-                _ => false
-            };
-
-            Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-        },
-
-        _ => new_error!("Liszp: function 'quote?' takes exactly one argument").into()
-    }
-}
-
-
 pub fn value_is_str(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is a str */
 
     match args.as_slice() {
         [continuation, value] => {
-            let resolved = evaluator.resolve(value)?;
-
-            let value = match &*resolved {
-                Value::Quote(v) => v,
-                _ => &resolved
-            };
-
-            let result = match &**value {
+            let result = match &*evaluator.resolve(value)? {
                 Value::String(_) => true,
                 _ => false
             };

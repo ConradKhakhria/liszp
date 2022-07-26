@@ -27,14 +27,6 @@ macro_rules! refcount_list {
 
 #[derive(Debug)]
 pub enum Value {
-    Name(String),
-
-    Integer(rug::Integer),
-
-    Float(rug::Float),
-
-    String(String),
-
     Bool(bool),
 
     Cons {
@@ -42,9 +34,15 @@ pub enum Value {
         cdr: Rc<Value>
     },
 
-    Quote(Rc<Value>), // Value::Cons
+    Float(rug::Float),
 
-    Nil
+    Integer(rug::Integer),
+
+    Name(String),
+
+    Nil,
+    
+    String(String),
 }
 
 
@@ -159,30 +157,19 @@ impl Value {
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return write!(f, "{}", match self {
-            Value::Name(s) => {
-                format!("{}", s)
-            },
-            Value::Integer(i) => {
-                format!("{}", i)
-            },
-            Value::Float(f) => {
-                format!("{}", f)
-            },
-            Value::String(s) => {
-                format!("{}", s)
-            },
-            Value::Bool(b) => {
-                format!("{}", b)
-            },
-            Value::Cons { .. } => {
-                format!("({})", Value::print_list(self))
-            },
-            Value::Quote(v) => {
-                format!("'{}", v)
-            },
-            Value::Nil => {
-                "nil".into()
-            }
+            Value::Name(s) => format!("{}", s),
+
+            Value::Integer(i) => format!("{}", i),
+
+            Value::Float(f) => format!("{}", f),
+
+            Value::String(s) => format!("{}", s),
+
+            Value::Bool(b) => format!("{}", b),
+
+            Value::Cons { .. } => format!("({})", Value::print_list(self)),
+
+            Value::Nil => "nil".into()
         });
     }
 }
@@ -198,7 +185,6 @@ impl PartialEq for Value {
             (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
                 a == b && x == y
             },
-            (Value::Quote(x), Value::Quote(y)) => x == y,
             (Value::Nil, Value::Nil) => true,
             _ => false
         }

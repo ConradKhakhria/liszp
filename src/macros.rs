@@ -23,7 +23,7 @@ pub struct Macro {
 
 
 impl Macro {
-    fn to_executable_expression(&self, supplied_args: &[Rc<Value>]) -> Rc<Value> {
+    fn to_executable_expression(&self, supplied_args: Vec<Rc<Value>>) -> Rc<Value> {
         /* Creates an executable expression from self and supplied arguments */
 
         let macro_as_function = refcount_list![
@@ -35,12 +35,12 @@ impl Macro {
         let mut quoted_args = Vec::with_capacity(supplied_args.len());
 
         for arg in supplied_args.iter() {
-            quoted_args.push(Value::Quote(arg.clone()).rc());
+            quoted_args.push(arg.clone());
         }
 
         Value::Cons {
             car: macro_as_function,
-            cdr: Value::cons_list(&quoted_args)
+            cdr: Value::cons_list(&supplied_args)
         }.rc()
     }
 }
@@ -75,10 +75,16 @@ pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Rc<V
 
              match evaluator.macros.get(&components[0].name()) {
                  Some(m) => {
-                     let supplied_args = &components[1..];
+                     let supplied_args = components[1..].to_vec();
                      let executable_expression = m.to_executable_expression(supplied_args);
 
-                     evaluator.eval(&executable_expression)
+                     println!("before expansion: {}", &executable_expression);
+
+                     let res = evaluator.eval(&executable_expression)?;
+
+                     println!("after expansion: {}", &res);
+
+                     Ok(res)
                  }
 
                  None => {
