@@ -1,13 +1,11 @@
 use crate::read;
 use crate::error::Error;
-use crate::eval::builtin;
+use crate::eval::{ builtin, operators };
 use crate::new_error;
 use crate::preprocess::macros::Macro;
 use crate::preprocess::preprocess;
 use crate::refcount_list;
 use crate::value::Value;
-use itertools::Itertools;
-use rug;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
@@ -114,12 +112,12 @@ impl Evaluator {
                 "&quote"            => builtin::quote_value(&args, self)?,
                 "&quote?"           => builtin::value_is_quote(&args, self)?,
                 "&str?"             => builtin::value_is_str(&args, self)?,
-                "&+"|"&-"|"&*"|"&/" => self.arithmetic_expression(&function_name, &args)?,
-                "&%"                => self.modulo(&args)?,
-                "&and"|"&or"|"&xor" => self.binary_logical_operation(&function_name, &args)?,
-                "&not"              => self.logical_negation(&args)?,
+                "&+"|"&-"|"&*"|"&/" => operators::arithmetic_expression(&function_name, &args, self)?,
+                "&%"                => operators::modulo(&args, self)?,
+                "&and"|"&or"|"&xor" => operators::binary_logical_operation(&function_name, &args, self)?,
+                "&not"              => operators::logical_negation(&args, self)?,
                 "&<"|"&>"|"&<="|
-                "&>="|"&=="|"&!="   => self.comparison(&function_name, &args)?,
+                "&>="|"&=="|"&!="   => operators::comparison(&function_name, &args, self)?,
                 "no-continuation"   => {
                     if args.len() == 1{
                         value = args[0].clone();
@@ -229,7 +227,7 @@ impl Evaluator {
     }
 
 
-    /* Non-built-in function evaluation */
+    /* function evaluation */
 
 
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
@@ -359,270 +357,5 @@ impl Evaluator {
         }
 
         Ok(shadowed_args)
-    }
-
-
-    /* Arithmetic */
-
-
-    fn arithmetic_expression(&self, op: &String, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Computes an arithmetic expression */
-
-        if args.len() < 2 {
-            return new_error!("Liszp: '{}' expression takes at least 1 argument", op).into();
-        }
-
-        let mut numbers = Vec::with_capacity(args.len());
-        let continuation = &args[0];
-        let mut result_is_float = false;
-
-        for arg in args.iter().dropping(1) {
-            let arg = self.resolve(arg)?;
-
-            match &*arg {
-                Value::Float(_) => {
-                    result_is_float = true;
-                    numbers.push(arg);
-                },
-
-                Value::Integer(_) => numbers.push(arg),
-
-                _ => return new_error!("Liszp: '{}' expression takes numeric arguments", &op[1..]).into()
-            }
-        }
-
-        let result = if result_is_float {
-            Self::float_arithmetic(op, &numbers)
-        } else {
-            Self::integer_arithmetic(op, &numbers)
-        };
-
-        Ok(refcount_list![ continuation.clone(), result ])
-    }
-
-
-    fn float_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
-        /* Evaluates an arithmetic expression of floats */
-
-        let mut result = match &*args[0] {
-            Value::Float(f) => f.clone(),
-            Value::Integer(i) => rug::Float::with_val(53, i),
-            _ => unreachable!()
-        };
-
-        macro_rules! reduce_over_operation {
-            { $action:tt } => {
-                for arg in args.iter().dropping(1) {
-                    match &**arg {
-                        Value::Float(f) => { result $action f },
-                        Value::Integer(i) => { result $action i },
-                        _ => unreachable!()
-                    }
-                }
-            }
-        }
-
-        match op.as_str() {
-            "&+" => reduce_over_operation!(+=),
-            "&-" => reduce_over_operation!(-=),
-            "&*" => reduce_over_operation!(*=),
-            "&/" => reduce_over_operation!(/=),
-            _    => unreachable!()
-        }
-
-        if op == "&-" && args.len() == 1 {
-            Value::Float(-result).rc()
-        } else {
-            Value::Float(result).rc()
-        }
-    }
-
-
-    fn integer_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
-        /* Evaluates an arithmetic expression of integers */
-
-        let mut result = match &*args[0] {
-            Value::Integer(i) => i.clone(),
-            _ => unreachable!()
-        };
-
-        macro_rules! reduce_over_operation {
-            { $action:tt } => {
-                for arg in args.iter().dropping(1) {
-                    match &**arg {
-                        Value::Integer(i) => { result $action i },
-                        _ => unreachable!()
-                    }
-                }
-            }
-        }
-
-        match op.as_str() {
-            "&+" => reduce_over_operation!(+=),
-            "&-" => reduce_over_operation!(-=),
-            "&*" => reduce_over_operation!(*=),
-            "&/" => reduce_over_operation!(/=),
-            _    => unreachable!()
-        }
-
-        if op == "&-" && args.len() == 1 {
-            Value::Integer(-result).rc()
-        } else {
-            Value::Integer(result).rc()
-        }
-    }
-
-
-    fn modulo(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Takes the modulus of a number */
-
-        match args.as_slice() {
-            [continuation, dividend, divisor] => {
-                let dividend = self.resolve(dividend)?;
-                let divisor = self.resolve(divisor)?;
-
-                let result = match (&*dividend, &*divisor) {
-                    (Value::Float(x), Value::Float(y)) => Value::Float(x.clone() % y.clone()).rc(),
-
-                    (Value::Float(_), Value::Integer(_)) => return new_error!("Liszp: Cannot take the integer modulo of a float").into(),
-
-                    (Value::Integer(x), Value::Integer(y)) => Value::Integer(x.clone() % y.clone()).rc(),
-
-                    _ => unreachable!()
-                };
-
-                Ok(refcount_list![ continuation, &result ])
-            },
-
-            _ => new_error!("Liszp: modulo expressions take exactly 2 arguments").into()
-        }
-    }
-
-
-    /* Logic */
-
-    fn binary_logical_operation(&self, op: &String, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Evaluates a binary logical operation */
-
-        match args.as_slice() {
-            [continuation, x, y] => {
-                let x = match &*self.resolve(x)? {
-                    Value::Bool(b) => *b,
-                    _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
-                };
-
-                let y = match &*self.resolve(y)? {
-                    Value::Bool(b) => *b,
-                    _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
-                };
-
-                let result = match op.as_str() {
-                    "&and" => x && y,
-                    "&or"  => x || y,
-                    "&xor" => x ^ y,
-                    _      => unreachable!()
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            }
-
-            _ => new_error!("Liszp: {} expressions take exactly 2 arguments", &op[1..]).into()
-        }
-    }
-
-
-    fn logical_negation(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Performs a logical not operation */
-
-        match args.as_slice() {
-            [continuation, x] => {
-                let x = match &*self.resolve(x)? {
-                    Value::Bool(b) => *b,
-                    _ => return new_error!("Liszp: not expressions take a boolean argument").into()
-                };
-
-                let result = Value::Bool(!x).rc();
-
-                Ok(refcount_list![ continuation, &result ])
-            }
-
-            _ => new_error!("Liszp: not expressions take exactly 1 argument").into()
-        }
-    }
-
-
-    /* Comparison */
-
-    fn comparison(&self, op: &String, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Compares two values */
-
-        match args.as_slice() {
-            [continuation, x, y] => {
-                let x = self.resolve(x)?;
-                let y = self.resolve(y)?;
-
-                let result = match (&*x, &*y) {
-                    (Value::Integer(x), Value::Integer(y)) => {
-                        Self::integer_comparison(op, x, y)
-                    }
-
-                    (Value::Float(x), Value::Integer(y)) => {
-                        let y = rug::Float::with_val(53, y);
-
-                        Self::float_comparison(op, x, &y)
-                    }
-
-                    (Value::Integer(x), Value::Float(y)) => {
-                        let x = rug::Float::with_val(53, x);
-
-                        Self::float_comparison(op, &x, y)
-                    }
-
-                    (Value::Float(x), Value::Float(y)) => {
-                        Self::float_comparison(op, x, y)
-                    }
-
-                    _ => return new_error!("Liszp: {} expressions take two numeric values", &op[1..]).into()
-                };
-
-                Ok(refcount_list![ continuation, &result ])
-            }
-
-            _ => new_error!("Liszp: {} expressions take exactly 2 values", &op[1..]).into()
-        }
-    }
-
-
-    fn float_comparison(op: &String, x: &rug::Float, y: &rug::Float) -> Rc<Value> {
-        /* Compares two floats */
-
-        let result = match op.as_str() {
-            "&==" => x == y,
-            "&!=" => x != y,
-            "&<"  => x < y,
-            "&>"  => x > y,
-            "&<=" => x <= y,
-            "&>=" => x >= y,
-            _     => unreachable!()
-        };
-
-        Value::Bool(result).rc()
-    }
-
-
-    fn integer_comparison(op: &String, x: &rug::Integer, y: &rug::Integer) -> Rc<Value> {
-        /* Compares two integers */
-
-        let result = match op.as_str() {
-            "&==" => x == y,
-            "&!=" => x != y,
-            "&<"  => x < y,
-            "&>"  => x > y,
-            "&<=" => x <= y,
-            "&>=" => x >= y,
-            _     => unreachable!()
-        };
-
-        Value::Bool(result).rc()
     }
 }
