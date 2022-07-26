@@ -28,7 +28,7 @@ impl Macro {
         /* Creates an executable expression from self and supplied arguments */
 
         let macro_as_function = refcount_list![
-            Value::Name("&lambda".into()).rc(),
+            Value::Name("lambda".into()).rc(),
             self.args.clone(),
             self.body.clone()
         ];
