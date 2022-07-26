@@ -3,7 +3,7 @@ use crate::read;
 use crate::error::Error;
 use crate::eval::{ builtin, operators };
 use crate::new_error;
-use crate::preprocess::macros;
+use crate::macros;
 use crate::refcount_list;
 use crate::value::Value;
 use std::collections::HashMap;
