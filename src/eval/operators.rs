@@ -16,6 +16,8 @@ use std::rc::Rc;
 pub fn arithmetic_expression(op: &String, args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Computes an arithmetic expression */
 
+    let args = evaluator.resolve_globals(args);
+
     if args.len() < 2 {
         return new_error!("Liszp: '{}' expression takes at least 1 argument", op).into();
     }
@@ -25,15 +27,13 @@ pub fn arithmetic_expression(op: &String, args: &Vec<Rc<Value>>, evaluator: &Eva
     let mut result_is_float = false;
 
     for arg in args.iter().dropping(1) {
-        let arg = evaluator.resolve(arg)?;
-
-        match &*arg {
+        match &**arg {
             Value::Float(_) => {
                 result_is_float = true;
-                numbers.push(arg);
+                numbers.push(arg.clone());
             },
 
-            Value::Integer(_) => numbers.push(arg),
+            Value::Integer(_) => numbers.push(arg.clone()),
 
             _ => return new_error!("Liszp: '{}' expression takes numeric arguments", op).into()
         }
@@ -124,12 +124,11 @@ fn integer_arithmetic(op: &String, args: &Vec<Rc<Value>>) -> Rc<Value> {
 pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Takes the modulus of a number */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, dividend, divisor] => {
-            let dividend = evaluator.resolve(dividend)?;
-            let divisor = evaluator.resolve(divisor)?;
-
-            let result = match (&*dividend, &*divisor) {
+            let result = match (&**dividend, &**divisor) {
                 (Value::Float(x), Value::Float(y)) => Value::Float(x.clone() % y.clone()).rc(),
 
                 (Value::Float(_), Value::Integer(_)) => return new_error!("Liszp: Cannot take the integer modulo of a float").into(),
@@ -152,14 +151,16 @@ pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>,
 pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Evaluates a binary logical operation */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, x, y] => {
-            let x = match &*evaluator.resolve(x)? {
+            let x = match &**x {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
 
-            let y = match &*evaluator.resolve(y)? {
+            let y = match &**y {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
@@ -182,9 +183,11 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
 pub fn logical_negation(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Performs a logical not operation */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, x] => {
-            let x = match &*evaluator.resolve(x)? {
+            let x = match &**x {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: not expressions take a boolean argument").into()
             };
@@ -201,15 +204,15 @@ pub fn logical_negation(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<
 
 /* Comparison */
 
+
 pub fn comparison(op: &String, args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Compares two values */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, x, y] => {
-            let x = evaluator.resolve(x)?;
-            let y = evaluator.resolve(y)?;
-
-            let result = match (&*x, &*y) {
+            let result = match (&**x, &**y) {
                 (Value::Integer(x), Value::Integer(y)) => {
                     integer_comparison(op, x, y)
                 }

@@ -55,17 +55,25 @@ impl Evaluator {
     }
 
 
-    pub fn resolve(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* If 'value' is a name, this substitutes it for the ident's value */
+    pub fn resolve_globals(&self, args: &Vec<Rc<Value>>) -> Vec<Rc<Value>> {
+        /* Replaces args which are named globals with the global values */
 
-        if let Value::Name(name) = &**value {
-            match self.globals.get(name) {
-                Some(v) => Ok(v.clone()),
-                None => new_error!("unbound name '{}'", name).into()
+        let mut resolved_args = Vec::with_capacity(args.len());
+
+        for arg in args.iter() {
+            match &**arg {
+                Value::Name(name) => {
+                    match self.globals.get(name) {
+                        Some(v) => resolved_args.push(v.clone()),
+                        None => resolved_args.push(arg.clone())
+                    }
+                },
+
+                _ => resolved_args.push(arg.clone())
             }
-        } else {
-            Ok(value.clone())
         }
+
+        resolved_args
     }
 
 
@@ -236,7 +244,9 @@ impl Evaluator {
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
-        let function_components = match self.resolve(function)?.to_list() {
+        let resolved_function = self.resolve_globals(&vec![ function.clone() ])[0].clone();
+
+        let function_components = match resolved_function.to_list() {
             Some(xs) => xs,
             None => return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into()
         };

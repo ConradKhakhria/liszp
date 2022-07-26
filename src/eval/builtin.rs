@@ -9,16 +9,14 @@ use std::rc::Rc;
 pub fn car(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Gets the car of a cons pair */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, xs] => {
-            let resolved = evaluator.resolve(xs)?;
-
-            let car = match &*resolved {
-                Value::Cons { car, .. } => car,
-                _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
-            };
-
-            Ok(refcount_list![ continuation, car ])
+            match &**xs {
+                Value::Cons { car, .. } => Ok(refcount_list![ continuation, car ]),
+                _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
+            }
         },
 
         _ => new_error!("Liszp: function 'car' takes 1 argument").into()
@@ -29,17 +27,14 @@ pub fn car(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
 pub fn cdr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Gets the cdr of a cons pair */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, xs] => {
-            let resolved = evaluator.resolve(xs)?;
-
-            let cdr = match &*resolved {
-                Value::Cons { cdr, .. } => cdr,
-                _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
-            };
-
-
-            Ok(refcount_list![ continuation, cdr ])
+            match &**xs {
+                Value::Cons { cdr, .. } => Ok(refcount_list![ continuation, cdr ]),
+                _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
+            }
         },
 
         _ => new_error!("Liszp: function 'cdr' takes 1 argument").into()
@@ -50,14 +45,11 @@ pub fn cdr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
 pub fn cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Creates a cons pair */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, car, cdr] => {
-            let cons_pair = Value::Cons {
-                car: evaluator.resolve(car)?,
-                cdr: evaluator.resolve(cdr)?
-            };
-
-            Ok(refcount_list![ continuation.clone(), cons_pair.rc() ])
+            Ok(refcount_list![ continuation.clone(), Value::cons(car, cdr).rc() ])
         }
 
         _ => new_error!("Liszp: function 'cons' expected 2 arguments").into()
@@ -67,6 +59,8 @@ pub fn cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, E
 
 pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Evaluates a quoted value */
+
+    let args = evaluator.resolve_globals(args);
 
     match args.as_slice() {
         [continuation, quoted_value] => {
@@ -83,22 +77,22 @@ pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Va
 pub fn if_expr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Evaluates an if expression */
 
-    if args.len() != 3 {
-        return new_error!("Liszp: if expression has syntax (if <condition> <true case> <false case>)").into();
-    }
+    let args = evaluator.resolve_globals(args);
 
-    let cond = evaluator.resolve(&args[0])?;
-    let true_case = evaluator.resolve(&args[1])?;
-    let false_case = evaluator.resolve(&args[2])?;
+    match args.as_slice() {
+        [cond, true_case, false_case] => {
+            if let Value::Bool(b) = &**cond {
+                if *b {
+                    Ok(true_case.clone())
+                } else {
+                    Ok(false_case.clone())
+                }
+            } else {
+                new_error!("if expression expected a boolean condition").into()
+            }
+        },
 
-    if let Value::Bool(b) = &*cond {
-        if *b {
-            Ok(true_case)
-        } else {
-            Ok(false_case)
-        }
-    } else {
-        new_error!("if expression expected a boolean condition").into()
+        _ => new_error!("Liszp: if expression has syntax (if <condition> <true case> <false case>)").into()
     }
 }
 
@@ -116,20 +110,21 @@ pub fn panic(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
 pub fn print_value(args: &Vec<Rc<Value>>, evaluator: &Evaluator, newline: bool) -> Result<Rc<Value>, Error> {
     /* Prints a value, optionally with a newline */
 
-    if args.len() != 2 {
-        return new_error!("Function print{} takes 1 argument only", if newline { "ln" } else { "" }).into();
+    let args = evaluator.resolve_globals(args);
+
+    match args.as_slice() {
+        [continuation, value] => {
+            if newline {
+                println!("{}", value);
+            } else {
+                print!("{}", value);
+            }
+        
+            Ok(refcount_list![ continuation.clone(), value.clone()])
+        },
+
+        _ => new_error!("Function print{} takes 1 argument only", if newline { "ln" } else { "" }).into()
     }
-
-    let continuation = &args[0];
-    let value = evaluator.resolve(&args[1])?;
-
-    if newline {
-        println!("{}", value);
-    } else {
-        print!("{}", value);
-    }
-
-    Ok(refcount_list![ continuation.clone(), value])
 }
 
 
@@ -147,11 +142,11 @@ pub fn quote_value(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
 pub fn values_are_equal(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Compares two values */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, x, y] => {
-            let result = Value::Bool(evaluator.resolve(x)? == evaluator.resolve(y)?).rc();
-
-            Ok(refcount_list![ continuation, &result ])
+            Ok(refcount_list![ continuation.clone(), Value::Bool(x == y).rc() ])
         },
 
         _ => new_error!("Liszp: Function 'equals?' takes exactly 2 parameters").into()
@@ -162,9 +157,11 @@ pub fn values_are_equal(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<
 pub fn value_is_bool(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is a bool */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::Bool(_) => true,
                 _ => false
             };
@@ -180,9 +177,11 @@ pub fn value_is_bool(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 pub fn value_is_cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is a cons pair */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::Cons {..} => true,
                 _ => false
             };
@@ -198,9 +197,11 @@ pub fn value_is_cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 pub fn value_is_float(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {   
     /* Returns whether a value is a float */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::Float(_) => true,
                 _ => false
             };
@@ -216,9 +217,11 @@ pub fn value_is_float(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc
 pub fn value_is_int(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is an int */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::Integer(_) => true,
                 _ => false
             };
@@ -234,9 +237,11 @@ pub fn value_is_int(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 pub fn value_is_nil(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is nil */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::Nil => true,
                 _ => false
             };
@@ -270,9 +275,11 @@ pub fn value_is_name(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
 pub fn value_is_str(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Returns whether a value is a str */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &*evaluator.resolve(value)? {
+            let result = match &**value {
                 Value::String(_) => true,
                 _ => false
             };
