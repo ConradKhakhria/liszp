@@ -2,7 +2,7 @@ use crate::read;
 use crate::error::Error;
 use crate::eval::{ builtin, operators };
 use crate::new_error;
-use crate::preprocess::macros::Macro;
+use crate::preprocess::macros;
 use crate::preprocess::preprocess;
 use crate::refcount_list;
 use crate::value::Value;
@@ -17,7 +17,7 @@ type ValueMap = HashMap<String, Rc<Value>>;
 pub struct Evaluator {
     evaluated: Vec<Rc<Value>>,
     globals: ValueMap,
-    pub macros: HashMap<String, Macro>,
+    pub macros: HashMap<String, macros::Macro>,
 }
 
 
@@ -77,16 +77,30 @@ impl Evaluator {
     }
 
 
+    /* Preprocessing */
+
+
+    fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* Preprocesses an expression */
+
+        if let Some(ref macro_expanded) = macros::expand_macros(expr, self)? {
+            let formatted = crate::preprocess::fmt::format_names(macro_expanded);
+            let cps_converted = crate::preprocess::cps::convert_expr(&formatted)?;
+
+            Ok(cps_converted)
+        } else {
+            Ok(Value::Nil.rc())
+        }
+    }
+
+
     /* Eval */
 
 
     pub fn eval(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Evaluates an expression in Env */
 
-        let mut value = match preprocess(expr, self)? {
-            Some(v) => v,
-            None => return Ok(Value::Nil.rc())
-        };
+        let mut value = self.preprocess(expr)?;
 
         while let Value::Cons { car: function, cdr: args  } = &*value {
             let function_name = function.name();
