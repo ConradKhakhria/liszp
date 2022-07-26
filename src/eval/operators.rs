@@ -35,7 +35,7 @@ pub fn arithmetic_expression(op: &String, args: &Vec<Rc<Value>>, evaluator: &Eva
 
             Value::Integer(_) => numbers.push(arg),
 
-            _ => return new_error!("Liszp: '{}' expression takes numeric arguments", &op[1..]).into()
+            _ => return new_error!("Liszp: '{}' expression takes numeric arguments", op).into()
         }
     }
 
@@ -156,12 +156,12 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
         [continuation, x, y] => {
             let x = match &*evaluator.resolve(x)? {
                 Value::Bool(b) => *b,
-                _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
+                _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
 
             let y = match &*evaluator.resolve(y)? {
                 Value::Bool(b) => *b,
-                _ => return new_error!("Liszp: {} expressions take boolean arguments", &op[1..]).into()
+                _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
 
             let result = match op.as_str() {
@@ -174,7 +174,7 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
             Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
         }
 
-        _ => new_error!("Liszp: {} expressions take exactly 2 arguments", &op[1..]).into()
+        _ => new_error!("Liszp: {} expressions take exactly 2 arguments", op).into()
     }
 }
 
@@ -230,13 +230,13 @@ pub fn comparison(op: &String, args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> 
                     float_comparison(op, x, y)
                 }
 
-                _ => return new_error!("Liszp: {} expressions take two numeric values", &op[1..]).into()
+                _ => return new_error!("Liszp: {} expressions take two numeric values", op).into()
             };
 
             Ok(refcount_list![ continuation, &result ])
         }
 
-        _ => new_error!("Liszp: {} expressions take exactly 2 values", &op[1..]).into()
+        _ => new_error!("Liszp: {} expressions take exactly 2 values", op).into()
     }
 }
 

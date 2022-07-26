@@ -68,7 +68,7 @@ impl Evaluator {
         if let Value::Name(name) = &**value {
             match self.globals.get(name) {
                 Some(v) => Ok(v.clone()),
-                None => new_error!("unbound name '{}'", &name[1..]).into()
+                None => new_error!("unbound name '{}'", name).into()
             }
         } else {
             Ok(value.clone())
@@ -254,7 +254,7 @@ impl Evaluator {
 
         if function_components.len() != 3 {
             return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into();
-        } else if function_components[0].name() != "&lambda" {
+        } else if function_components[0].name() != "lambda" {
             return new_error!("Liszp: attempt to call a non-function value").into();
         }
 
@@ -326,7 +326,7 @@ impl Evaluator {
             },
 
             Value::Cons { car, cdr } => {
-                if car.name() == "&lambda" {
+                if car.name() == "lambda" {
                     let lambda_components = match expr.to_list() {
                         Some(xs) => xs,
                         _ => return new_error!("malformed lambda expression").into()

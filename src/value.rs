@@ -135,7 +135,7 @@ impl Value {
             _ => string += &format!(" . {}", cursor)
         }
 
-        return (&string[1..]).into();
+        string
     }
 
 
