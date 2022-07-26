@@ -1,10 +1,7 @@
-use crate::{
-    error::Error,
-    new_error,
-    refcount_list,
-    value::Value
-};
-
+use crate::error::Error;
+use crate::new_error;
+use crate::refcount_list;
+use crate::value::Value;
 use std::rc::Rc;
 
 pub struct CPSConverter {
