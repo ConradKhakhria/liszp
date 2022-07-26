@@ -1,7 +1,7 @@
 use crate::read;
 use crate::error::Error;
+use crate::eval::builtin;
 use crate::new_error;
-use crate::preprocess::cps::CPSConverter;
 use crate::preprocess::macros::Macro;
 use crate::preprocess::preprocess;
 use crate::refcount_list;
@@ -43,7 +43,29 @@ impl Evaluator {
 
     /* Env-related functions */
 
-    fn resolve(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
+
+    fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+        /* Defines a value in self.globals */
+    
+        if args.len() != 3 {
+            return new_error!("Liszp: expected syntax (def <name> <value>)").into();
+        }
+    
+        let continuation = &args[0];
+        let name = &args[1];
+        let value = &args[2];
+    
+        if let Value::Name(name) = &**name {
+            self.globals.insert(name.clone(), value.clone());
+        } else {
+            return new_error!("Liszp: expected name in def expression").into();
+        }
+    
+        Ok(refcount_list![ continuation.clone(), Value::Nil.rc() ])
+    }
+
+
+    pub fn resolve(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* If 'value' is a name, this substitutes it for the ident's value */
 
         if let Value::Name(name) = &**value {
@@ -59,6 +81,7 @@ impl Evaluator {
 
     /* Eval */
 
+
     pub fn eval(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Evaluates an expression in Env */
 
@@ -72,32 +95,39 @@ impl Evaluator {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function_name.as_str() {
-                "&bool?"            => self.value_is_bool(&args)?,
-                "&car"              => self.car(&args)?,
-                "&cdr"              => self.cdr(&args)?,
-                "&cons"             => self.cons(&args)?,
-                "&cons?"            => self.value_is_cons(&args)?,
+                "&bool?"            => builtin::value_is_bool(&args, self)?,
+                "&car"              => builtin::car(&args, self)?,
+                "&cdr"              => builtin::cdr(&args, self)?,
+                "&cons"             => builtin::cons(&args, self)?,
+                "&cons?"            => builtin::value_is_cons(&args, self)?,
                 "&def"              => self.define_value(&args)?,
-                "&equals?"          => self.values_are_equal(&args)?,
-                "&eval"             => self.eval_quoted(&args)?,
-                "&float"            => self.value_is_float(&args)?,
-                "&if"               => self.if_expr(&args)?,
-                "&int?"             => self.value_is_int(&args)?,
-                "&name?"            => self.value_is_name(&args)?,
-                "&nil?"             => self.value_is_nil(&args)?,
-                "no-continuation"   => self.no_continuation(&args)?,
-                "&panic"            => self.panic(&args)?,
-                "&print"            => self.print_value(&args, false)?,
-                "&println"          => self.print_value(&args, true)?,
-                "&quote"            => self.quote_value(&args)?,
-                "&quote?"           => self.value_is_quote(&args)?,
-                "&str?"             => self.value_is_str(&args)?,
+                "&equals?"          => builtin::values_are_equal(&args, self)?,
+                "&eval"             => builtin::eval_quoted(&args, self)?,
+                "&float"            => builtin::value_is_float(&args, self)?,
+                "&if"               => builtin::if_expr(&args, self)?,
+                "&int?"             => builtin::value_is_int(&args, self)?,
+                "&name?"            => builtin::value_is_name(&args)?,
+                "&nil?"             => builtin::value_is_nil(&args, self)?,
+                "&panic"            => builtin::panic(&args)?,
+                "&print"            => builtin::print_value(&args, self, false)?,
+                "&println"          => builtin::print_value(&args, self, true)?,
+                "&quote"            => builtin::quote_value(&args, self)?,
+                "&quote?"           => builtin::value_is_quote(&args, self)?,
+                "&str?"             => builtin::value_is_str(&args, self)?,
                 "&+"|"&-"|"&*"|"&/" => self.arithmetic_expression(&function_name, &args)?,
                 "&%"                => self.modulo(&args)?,
                 "&and"|"&or"|"&xor" => self.binary_logical_operation(&function_name, &args)?,
                 "&not"              => self.logical_negation(&args)?,
                 "&<"|"&>"|"&<="|
                 "&>="|"&=="|"&!="   => self.comparison(&function_name, &args)?,
+                "no-continuation"   => {
+                    if args.len() == 1{
+                        value = args[0].clone();
+                        break;
+                    } else {
+                        unreachable!()
+                    }
+                },
                 _                   => self.evaluate_lambda_funcall(function, &args)?,
             }
         }
@@ -200,6 +230,7 @@ impl Evaluator {
 
 
     /* Non-built-in function evaluation */
+
 
     fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
@@ -331,435 +362,8 @@ impl Evaluator {
     }
 
 
-    /* built-in functions */
-
-    fn car(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Gets the car of a cons pair */
-
-        match args.as_slice() {
-            [continuation, xs] => {
-                let resolved = self.resolve(xs)?;
-
-                let xs = match &*resolved {
-                    Value::Quote(cons) => cons.clone(),
-                    _ => unreachable!()
-                };
-
-                let car = match &*xs {
-                    Value::Cons { car, .. } => car,
-                    _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
-                };
-
-                // If car is a name or cons pair, we must quote it again
-                let potentially_quoted_car = match &**car {
-                    Value::Cons {..} => Value::Quote(car.clone()).rc(),
-                    Value::Name(_)   => Value::Quote(car.clone()).rc(),
-                    _                => car.clone()
-                };
-
-                Ok(refcount_list![ continuation, &potentially_quoted_car ])
-            },
-
-            _ => new_error!("Liszp: function 'car' takes 1 argument").into()
-        }
-    }
-
-
-    fn cdr(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Gets the cdr of a cons pair */
-
-        match args.as_slice() {
-            [continuation, xs] => {
-                let resolved = self.resolve(xs)?;
-
-                let xs = match &*resolved {
-                    Value::Quote(cons) => cons.clone(),
-                    _ => unreachable!()
-                };
-
-                let cdr = match &*xs {
-                    Value::Cons { cdr, .. } => cdr,
-                    _ => return new_error!("Liszp: function 'cons' expected to receive cons pair").into()
-                };
-
-                // If cdr is a name or cons pair, we must quote it again
-                let potentially_quoted_cdr = match &**cdr {
-                    Value::Cons {..} => Value::Quote(cdr.clone()).rc(),
-                    Value::Name(_)   => Value::Quote(cdr.clone()).rc(),
-                    _                => cdr.clone()
-                };
-
-                Ok(refcount_list![ continuation, &potentially_quoted_cdr ])
-            },
-
-            _ => new_error!("Liszp: function 'cdr' takes 1 argument").into()
-        }
-    }
-
-
-    fn cons(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Creates a cons pair */
-
-        match args.as_slice() {
-            [continuation, car, cdr] => {
-                let car = self.resolve(car)?;
-                let cdr = self.resolve(cdr)?;
-
-                let cons_pair = Value::Quote(
-                    Rc::new(Value::Cons {
-                        car: if let Value::Quote(v) = &*car {
-                            v.clone()
-                        } else {
-                            car
-                        },
-
-                        cdr: if let Value::Quote(v) = &*cdr {
-                            v.clone()
-                        } else {
-                            cdr
-                        }
-                    })
-                );
-
-                Ok(refcount_list![ continuation.clone(), cons_pair.rc() ])
-            }
-
-            _ => new_error!("Liszp: function 'cons' expected 2 arguments").into()
-        }
-    }
-
-
-    fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Defines a value in self.globals */
-
-        if args.len() != 3 {
-            return new_error!("Liszp: expected syntax (def <name> <value>)").into();
-        }
-
-        let continuation = &args[0];
-        let name = &args[1];
-        let value = &args[2];
-
-        if let Value::Name(name) = &**name {
-            self.globals.insert(name.clone(), value.clone());
-        } else {
-            return new_error!("Liszp: expected name in def expression").into();
-        }
-
-        Ok(refcount_list![ continuation.clone(), Value::Nil.rc() ])
-    }
-
-
-    fn eval_quoted(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Evaluates a quoted value */
-
-        match args.as_slice() {
-            [continuation, quoted_value] => {
-                let value = match &*self.resolve(quoted_value)? {
-                    Value::Quote(v) => {
-                        CPSConverter::convert_expr_with_continuation(v, continuation)?
-                    },
-
-                    _ => quoted_value.clone()
-                };
-
-                Ok(refcount_list![ continuation, &value ])
-            }
-
-            _ => new_error!("Liszp: function 'quote' takes exactly one argument").into()
-        }
-    }
-
-
-    fn if_expr(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Evaluates an if expression */
-    
-        if args.len() != 3 {
-            return new_error!("Liszp: if expression has syntax (if <condition> <true case> <false case>)").into();
-        }
-
-        let cond = self.resolve(&args[0])?;
-        let true_case = self.resolve(&args[1])?;
-        let false_case = self.resolve(&args[2])?;
-
-        if let Value::Bool(b) = &*cond {
-            if *b {
-                Ok(true_case)
-            } else {
-                Ok(false_case)
-            }
-        } else {
-            new_error!("if expression expected a boolean condition").into()
-        }
-    }
-
-
-    fn no_continuation(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* The final stage of a trampolined evaluation */
-
-        if args.len() == 1 {
-            self.resolve(&args[0])
-        } else {
-            unreachable!()
-        }
-    }
-
-
-    fn panic(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Panics */
-
-        match args.as_slice() {
-            [_, msg] => panic!("{}", msg),
-            _ => new_error!("Liszp: expected syntax (panic <message>)").into()
-        }
-    }
-
-
-    fn print_value(&self, args: &Vec<Rc<Value>>, newline: bool) -> Result<Rc<Value>, Error> {
-        /* Prints a value, optionally with a newline */
-
-        if args.len() != 2 {
-            return new_error!("Function print{} takes 1 argument only", if newline { "ln" } else { "" }).into();
-        }
-
-        let continuation = &args[0];
-        let value = self.resolve(&args[1])?;
-
-        if newline {
-            println!("{}", value);
-        } else {
-            print!("{}", value);
-        }
-
-        Ok(refcount_list![ continuation.clone(), value])
-    }
-
-
-    fn quote_value(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Quotes a value */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let quoted_value = match &**value {
-                    Value::Quote(_) => value.clone(),
-                    _ => Value::Quote(self.resolve(value)?).rc()
-                };
-
-                Ok(refcount_list![ continuation, &quoted_value ])
-            }
-
-            _ => new_error!("Liszp: function 'quote' takes exactly one value").into()
-        }
-    }
-
-
-    fn values_are_equal(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Compares two values */
-
-        match args.as_slice() {
-            [continuation, x, y] => {
-                let result = Value::Bool(self.resolve(x)? == self.resolve(y)?).rc();
-
-                Ok(refcount_list![ continuation, &result ])
-            },
-
-            _ => new_error!("Liszp: Function 'equals?' takes exactly 2 parameters").into()
-        }
-    }
-
-
-    fn value_is_bool(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is a bool */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::Bool(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'bool?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_cons(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is a cons pair */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::Cons {..} => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'cons?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_float(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {   
-        /* Returns whether a value is a float */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::Float(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'float?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_int(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is an int */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::Integer(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'int?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_nil(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is nil */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::Nil => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'nil?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_name(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is a name */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let value = match &**value {
-                    Value::Quote(v) => v,
-                    _ => value
-                };
-
-                let result = match &**value {
-                    Value::Name(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'name?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_quote(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is quoted */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let result = match &*self.resolve(value)? {
-                    Value::Quote(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'quote?' takes exactly one argument").into()
-        }
-    }
-
-
-    fn value_is_str(&self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Returns whether a value is a str */
-
-        match args.as_slice() {
-            [continuation, value] => {
-                let resolved = self.resolve(value)?;
-
-                let value = match &*resolved {
-                    Value::Quote(v) => v,
-                    _ => &resolved
-                };
-
-                let result = match &**value {
-                    Value::String(_) => true,
-                    _ => false
-                };
-
-                Ok(refcount_list![ continuation.clone(), Value::Bool(result).rc() ])
-            },
-
-            _ => new_error!("Liszp: function 'str?' takes exactly one argument").into()
-        }
-    }
-
-
     /* Arithmetic */
+
 
     fn arithmetic_expression(&self, op: &String, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Computes an arithmetic expression */
