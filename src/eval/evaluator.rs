@@ -83,8 +83,7 @@ impl Evaluator {
         /* Preprocesses an expression */
 
         if let Some(ref macro_expanded) = macros::expand_macros(expr, self)? {
-            let formatted = crate::preprocess::fmt::format_names(macro_expanded);
-            let cps_converted = crate::preprocess::cps::convert_expr(&formatted)?;
+            let cps_converted = crate::preprocess::cps::convert_expr(macro_expanded)?;
 
             Ok(cps_converted)
         } else {
@@ -106,40 +105,42 @@ impl Evaluator {
             let args = args.to_list().expect("Liszp: expected a list of arguments");
 
             value = match function_name.as_str() {
-                "&bool?"            => builtin::value_is_bool(&args, self)?,
-                "&car"              => builtin::car(&args, self)?,
-                "&cdr"              => builtin::cdr(&args, self)?,
-                "&cons"             => builtin::cons(&args, self)?,
-                "&cons?"            => builtin::value_is_cons(&args, self)?,
-                "&def"              => self.define_value(&args)?,
-                "&equals?"          => builtin::values_are_equal(&args, self)?,
-                "&eval"             => builtin::eval_quoted(&args, self)?,
-                "&float"            => builtin::value_is_float(&args, self)?,
-                "&if"               => builtin::if_expr(&args, self)?,
-                "&int?"             => builtin::value_is_int(&args, self)?,
-                "&name?"            => builtin::value_is_name(&args)?,
-                "&nil?"             => builtin::value_is_nil(&args, self)?,
-                "&panic"            => builtin::panic(&args)?,
-                "&print"            => builtin::print_value(&args, self, false)?,
-                "&println"          => builtin::print_value(&args, self, true)?,
-                "&quote"            => builtin::quote_value(&args, self)?,
-                "&quote?"           => builtin::value_is_quote(&args, self)?,
-                "&str?"             => builtin::value_is_str(&args, self)?,
-                "&+"|"&-"|"&*"|"&/" => operators::arithmetic_expression(&function_name, &args, self)?,
-                "&%"                => operators::modulo(&args, self)?,
-                "&and"|"&or"|"&xor" => operators::binary_logical_operation(&function_name, &args, self)?,
-                "&not"              => operators::logical_negation(&args, self)?,
-                "&<"|"&>"|"&<="|
-                "&>="|"&=="|"&!="   => operators::comparison(&function_name, &args, self)?,
-                "no-continuation"   => {
-                    if args.len() == 1{
+                "bool?"          => builtin::value_is_bool(&args, self)?,
+                "car"            => builtin::car(&args, self)?,
+                "cdr"            => builtin::cdr(&args, self)?,
+                "cons"           => builtin::cons(&args, self)?,
+                "cons?"          => builtin::value_is_cons(&args, self)?,
+                "def"            => self.define_value(&args)?,
+                "equals?"        => builtin::values_are_equal(&args, self)?,
+                "eval"           => builtin::eval_quoted(&args, self)?,
+                "float"          => builtin::value_is_float(&args, self)?,
+                "if"             => builtin::if_expr(&args, self)?,
+                "int?"           => builtin::value_is_int(&args, self)?,
+                "name?"          => builtin::value_is_name(&args)?,
+                "nil?"           => builtin::value_is_nil(&args, self)?,
+                "panic"          => builtin::panic(&args)?,
+                "print"          => builtin::print_value(&args, self, false)?,
+                "println"        => builtin::print_value(&args, self, true)?,
+                "quote"          => builtin::quote_value(&args, self)?,
+                "quote?"         => builtin::value_is_quote(&args, self)?,
+                "str?"           => builtin::value_is_str(&args, self)?,
+                "+"|"-"|"*"|"/"  => operators::arithmetic_expression(&function_name, &args, self)?,
+                "%"              => operators::modulo(&args, self)?,
+                "and"|"or"|"xor" => operators::binary_logical_operation(&function_name, &args, self)?,
+                "not"            => operators::logical_negation(&args, self)?,
+                "<"|">"|"<="|">="|
+                "=="|"!="        => operators::comparison(&function_name, &args, self)?,
+
+                "&no-continuation" => {
+                    if args.len() == 1 {
                         value = args[0].clone();
                         break;
                     } else {
                         unreachable!()
                     }
                 },
-                _                   => self.evaluate_lambda_funcall(function, &args)?,
+
+                _ => self.evaluate_lambda_funcall(function, &args)?,
             }
         }
 
