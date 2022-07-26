@@ -1,23 +1,17 @@
-use crate::{
-    read,
-    error::Error,
-    new_error,
-    preprocess::{
-        cps::CPSConverter,
-        macros::Macro,
-        preprocess
-    },
-    refcount_list,
-    value::Value
-};
-use std::{
-    collections::HashMap,
-    io::Write,
-    path::Path,
-    rc::Rc,
-};
+use crate::read;
+use crate::error::Error;
+use crate::new_error;
+use crate::preprocess::cps::CPSConverter;
+use crate::preprocess::macros::Macro;
+use crate::preprocess::preprocess;
+use crate::refcount_list;
+use crate::value::Value;
 use itertools::Itertools;
 use rug;
+use std::collections::HashMap;
+use std::io::Write;
+use std::path::Path;
+use std::rc::Rc;
 
 
 type ValueMap = HashMap<String, Rc<Value>>;
