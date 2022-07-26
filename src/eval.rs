@@ -4,7 +4,8 @@ use crate::{
     new_error,
     preprocess::{
         cps::CPSConverter,
-        Preprocessesor
+        macros::Macro,
+        preprocess
     },
     refcount_list,
     value::Value
@@ -22,9 +23,9 @@ use rug;
 type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
-    globals: ValueMap,
     evaluated: Vec<Rc<Value>>,
-    preprocessor: Preprocessesor
+    globals: ValueMap,
+    pub macros: HashMap<String, Macro>,
 }
 
 
@@ -33,7 +34,7 @@ impl Evaluator {
         Evaluator {
             evaluated: vec![],
             globals: HashMap::new(),
-            preprocessor: Preprocessesor::new(),
+            macros: HashMap::new(),
         }
     }
 
@@ -67,8 +68,7 @@ impl Evaluator {
     pub fn eval(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Evaluates an expression in Env */
 
-        let mut preprocessor = Preprocessesor::new();
-        let mut value = match preprocessor.preprocess(expr, self)? {
+        let mut value = match preprocess(expr, self)? {
             Some(v) => v,
             None => return Ok(Value::Nil.rc())
         };
