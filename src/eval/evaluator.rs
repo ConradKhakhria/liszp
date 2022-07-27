@@ -34,6 +34,20 @@ impl Evaluator {
     /* Env-related functions */
 
 
+    pub fn add_global_value<T: ToString>(&mut self, name: T, value: &Rc<Value>) {
+        /* Adds a global value */
+
+        self.globals.insert(name.to_string(), value.clone());
+    }
+
+
+    pub fn remove_global_value<T: ToString>(&mut self, name: T) {
+        /* Removes a value from the global namespace */
+
+        self.globals.remove(&name.to_string());
+    }
+
+
     fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Defines a value in self.globals */
     
@@ -43,10 +57,10 @@ impl Evaluator {
     
         let continuation = &args[0];
         let name = &args[1];
-        let value = &args[2];
+        let value = self.resolve_globals(&args[2..].to_vec())[0].clone();
     
         if let Value::Name(name) = &**name {
-            self.globals.insert(name.clone(), value.clone());
+            self.globals.insert(name.clone(), self.error_on_name(&value)?);
         } else {
             return new_error!("Liszp: expected name in def expression").into();
         }
@@ -77,10 +91,26 @@ impl Evaluator {
     }
 
 
+    pub fn error_on_name(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* Returns an error if value is a name */
+
+        match &**value {
+            Value::Name(name) => {
+                if name == "&no-continuation" {
+                    Ok(value.clone())
+                } else {
+                    new_error!("unbound name '{}'", name).into()
+                }
+            },
+            _ => Ok(value.clone())
+        }
+    }
+
+
     /* Preprocessing */
 
 
-    fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+    pub fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Preprocesses an expression */
 
         let macro_expanded = macros::expand_macros(expr, self)?;
@@ -116,7 +146,7 @@ impl Evaluator {
                 "int?"           => builtin::value_is_int(&args, self)?,
                 "name?"          => builtin::value_is_name(&args)?,
                 "nil?"           => builtin::value_is_nil(&args, self)?,
-                "panic"          => builtin::panic(&args)?,
+                "panic"          => builtin::panic(&args, self)?,
                 "print"          => builtin::print_value(&args, self, false)?,
                 "println"        => builtin::print_value(&args, self, true)?,
                 "quote"          => builtin::quote_value(&args)?,
@@ -246,19 +276,19 @@ impl Evaluator {
 
         let resolved_function = self.resolve_globals(&vec![ function.clone() ])[0].clone();
 
-        let function_components = match resolved_function.to_list() {
+        let function_components = match self.error_on_name(&resolved_function)?.to_list() {
             Some(xs) => xs,
-            None => return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into()
+            None => return new_error!("function should have syntax (lambda <args> <body>)").into()
         };
 
         if function_components.len() != 3 {
-            return new_error!("Liszp: function should have syntax (lambda <args> <body>)").into();
+            return new_error!("function should have syntax (lambda <args> <body>)").into();
         } else if function_components[0].name() != "lambda" {
             return new_error!("Liszp: attempt to call a non-function value").into();
         }
 
         let arg_names = Self::get_arg_names(&function_components[1])?;
-        let mut arg_map = Self::build_argument_hashmap(&arg_names, arg_values)?;
+        let mut arg_map = self.build_argument_hashmap(&arg_names, arg_values)?;
 
         let function_body = &function_components[2];
 
@@ -295,10 +325,11 @@ impl Evaluator {
     }
 
 
-    fn build_argument_hashmap(arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> Result<ValueMap, Error> {
+    fn build_argument_hashmap(&self, arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> Result<ValueMap, Error> {
         /* Builds a map from argument names to argument values */
 
         let mut hashmap = HashMap::new();
+        let arg_values = self.resolve_globals(arg_values);
 
         if arg_names.len() != arg_values.len() {
             return new_error!("Function takes {} arguments but received {}", arg_names.len(), arg_values.len()).into();
