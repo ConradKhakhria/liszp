@@ -8,11 +8,6 @@ mod value;
 fn main() {
     /* Interface */
 
-    println!("All of our terrible problems could be solved with");
-    println!("recursive macros. The only impediment to this is that");
-    println!("the evaluator calls the macro expander, which calls");
-    println!("the evaluator, etc etc. Maybe turns the macros into functions?");
-
     let mut filename = None;
 
     for arg in std::env::args() {
