@@ -72,13 +72,7 @@ pub fn expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Rc<V
                     let supplied_args = components[1..].to_vec();
                     let executable_expression = m.to_executable_expression(supplied_args);
 
-                    println!("before expansion: {}", &executable_expression);
-
-                    let res = evaluator.eval(&executable_expression)?;
-
-                    println!("after expansion: {}", &res);
-
-                    Ok(res)
+                    evaluator.eval(&executable_expression)
                 }
 
                 None => {
