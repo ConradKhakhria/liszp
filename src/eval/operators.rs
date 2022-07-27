@@ -27,7 +27,7 @@ pub fn arithmetic_expression(op: &String, args: &Vec<Rc<Value>>, evaluator: &Eva
     let mut result_is_float = false;
 
     for arg in args.iter().dropping(1) {
-        match &**arg {
+        match &*evaluator.error_on_name(arg)? {
             Value::Float(_) => {
                 result_is_float = true;
                 numbers.push(arg.clone());
@@ -128,7 +128,7 @@ pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>,
 
     match args.as_slice() {
         [continuation, dividend, divisor] => {
-            let result = match (&**dividend, &**divisor) {
+            let result = match (&*evaluator.error_on_name(dividend)?, &*evaluator.error_on_name(divisor)?) {
                 (Value::Float(x), Value::Float(y)) => Value::Float(x.clone() % y.clone()).rc(),
 
                 (Value::Float(_), Value::Integer(_)) => return new_error!("Liszp: Cannot take the integer modulo of a float").into(),
@@ -155,12 +155,12 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
 
     match args.as_slice() {
         [continuation, x, y] => {
-            let x = match &**x {
+            let x = match &*evaluator.error_on_name(x)? {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
 
-            let y = match &**y {
+            let y = match &*evaluator.error_on_name(y)? {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
             };
@@ -187,7 +187,7 @@ pub fn logical_negation(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<
 
     match args.as_slice() {
         [continuation, x] => {
-            let x = match &**x {
+            let x = match &*evaluator.error_on_name(x)? {
                 Value::Bool(b) => *b,
                 _ => return new_error!("Liszp: not expressions take a boolean argument").into()
             };
@@ -212,7 +212,7 @@ pub fn comparison(op: &String, args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> 
 
     match args.as_slice() {
         [continuation, x, y] => {
-            let result = match (&**x, &**y) {
+            let result = match (&*evaluator.error_on_name(x)?, &*evaluator.error_on_name(y)?) {
                 (Value::Integer(x), Value::Integer(y)) => {
                     integer_comparison(op, x, y)
                 }
