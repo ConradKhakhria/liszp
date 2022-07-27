@@ -14,7 +14,7 @@ pub fn car(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
     match args.as_slice() {
         [continuation, xs] => {
             match &**xs {
-                Value::Cons { car, .. } => Ok(refcount_list![ continuation, car ]),
+                Value::Cons { car, .. } => Ok(refcount_list![ continuation.clone(), evaluator.error_on_name(car)? ]),
                 _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
             }
         },
@@ -32,7 +32,7 @@ pub fn cdr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Er
     match args.as_slice() {
         [continuation, xs] => {
             match &**xs {
-                Value::Cons { cdr, .. } => Ok(refcount_list![ continuation, cdr ]),
+                Value::Cons { cdr, .. } => Ok(refcount_list![ continuation.clone(), evaluator.error_on_name(cdr)? ]),
                 _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
             }
         },
@@ -64,6 +64,8 @@ pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Va
 
     match args.as_slice() {
         [continuation, quoted_value] => {
+            let quoted_value = evaluator.error_on_name(quoted_value)?;
+
             let value = todo!();
 
             Ok(refcount_list![ continuation, &value ])
@@ -81,7 +83,7 @@ pub fn if_expr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>
 
     match args.as_slice() {
         [cond, true_case, false_case] => {
-            if let Value::Bool(b) = &**cond {
+            if let Value::Bool(b) = &*evaluator.error_on_name(cond)? {
                 if *b {
                     Ok(true_case.clone())
                 } else {
@@ -97,11 +99,13 @@ pub fn if_expr(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>
 }
 
 
-pub fn panic(args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+pub fn panic(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<Value>, Error> {
     /* Panics */
 
+    let args = evaluator.resolve_globals(args);
+
     match args.as_slice() {
-        [_, msg] => panic!("{}", msg),
+        [_, msg] => panic!("{}", evaluator.error_on_name(msg)?),
         _ => new_error!("Liszp: expected syntax (panic <message>)").into()
     }
 }
@@ -161,7 +165,7 @@ pub fn value_is_bool(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::Bool(_) => true,
                 _ => false
             };
@@ -181,7 +185,7 @@ pub fn value_is_cons(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::Cons {..} => true,
                 _ => false
             };
@@ -201,7 +205,7 @@ pub fn value_is_float(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::Float(_) => true,
                 _ => false
             };
@@ -221,7 +225,7 @@ pub fn value_is_int(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::Integer(_) => true,
                 _ => false
             };
@@ -241,7 +245,7 @@ pub fn value_is_nil(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::Nil => true,
                 _ => false
             };
@@ -279,7 +283,7 @@ pub fn value_is_str(args: &Vec<Rc<Value>>, evaluator: &Evaluator) -> Result<Rc<V
 
     match args.as_slice() {
         [continuation, value] => {
-            let result = match &**value {
+            let result = match &*evaluator.error_on_name(value)? {
                 Value::String(_) => true,
                 _ => false
             };
