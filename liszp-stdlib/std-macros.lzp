@@ -1,0 +1,13 @@
+(def quasiquote-rec (lambda x
+    (if (cons? x)
+        (if (equals? (car x) 'unquote)
+            (eval (car (cdr x)))
+            (cons (quasiquote-rec (car x)) (quasiquote-rec (cdr x))))
+        x)))
+
+
+(defmacro (quasiquote x)
+    (cons
+        'quote
+        (cons (quasiquote-rec x) nil)))
+
