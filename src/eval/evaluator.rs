@@ -5,7 +5,6 @@ use crate::new_error;
 use crate::macros;
 use crate::value::Value;
 use std::collections::HashMap;
-use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
 
