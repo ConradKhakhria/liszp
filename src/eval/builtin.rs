@@ -57,7 +57,12 @@ pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<R
     /* Evaluates a quoted value */
 
     match args.as_slice() {
-        [quoted_value] => evaluator.eval(quoted_value),
+        [quoted_value] => {
+            let value_to_evaluate = evaluator.eval(quoted_value)?;
+
+            evaluator.eval(&value_to_evaluate)
+        },
+
         _ => new_error!("Liszp: function 'quote' takes exactly one argument").into()
     }
 }
