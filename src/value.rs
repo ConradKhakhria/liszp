@@ -38,6 +38,11 @@ pub enum Value {
 
     Integer(rug::Integer),
 
+    Lambda {
+        args: Vec<String>,
+        body: Rc<Value>
+    },
+
     Name(String),
 
     Nil,
@@ -135,41 +140,27 @@ impl Value {
 
         string
     }
-
-
-    pub fn substitute(expr: &Rc<Value>, old: &Rc<Value>, new: &Rc<Value>) -> Rc<Value> {
-        /* Returns self but with replacing a certain expression */
-
-        if std::ptr::eq(&**expr, &**old) {
-            new.clone()
-        } else if let Value::Cons { car, cdr} = &**expr {
-            Rc::new(Value::Cons {
-                car: Self::substitute(car, old, new),
-                cdr: Self::substitute(cdr, old, new)
-            })
-        } else {
-            expr.clone()
-        }
-    }
 }
 
 
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         return write!(f, "{}", match self {
-            Value::Name(s) => format!("{}", s),
-
-            Value::Integer(i) => format!("{}", i),
-
-            Value::Float(f) => format!("{}", f),
-
-            Value::String(s) => format!("{}", s),
-
             Value::Bool(b) => format!("{}", b),
 
             Value::Cons { .. } => format!("({})", Value::print_list(self)),
 
-            Value::Nil => "nil".into()
+            Value::Float(f) => format!("{}", f),
+
+            Value::Integer(i) => format!("{}", i),
+
+            Value::Lambda {..} => "<lambda expression>".into(),
+
+            Value::Name(s) => format!("{}", s),
+
+            Value::Nil => "nil".into(),
+
+            Value::String(s) => format!("{}", s)
         });
     }
 }
@@ -178,13 +169,13 @@ impl std::fmt::Display for Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Value::Name(a), Value::Name(b)) => a == b,
-            (Value::Integer(a), Value::Integer(b)) => a == b,
-            (Value::Float(a), Value::Float(b)) => a == b,
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::Cons { car: a, cdr: x}, Value::Cons { car: b, cdr: y }) => {
                 a == b && x == y
             },
+            (Value::Float(a), Value::Float(b)) => a == b,
+            (Value::Integer(a), Value::Integer(b)) => a == b,
+            (Value::Name(a), Value::Name(b)) => a == b,
             (Value::Nil, Value::Nil) => true,
             _ => false
         }
