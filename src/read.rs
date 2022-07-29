@@ -33,7 +33,7 @@ impl<'s> Reader<'s> {
                 "#.*?\n|",
                 r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
                 r"[a-zA-Z_\-\+\*/=<>:\.@%\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
-                "\".*?\"|\'.\'|\'|\n|,|",
+                "\".*?\"|\'.\'|\'|\n|`|,|",
                 r"\(|\)|\[|\]|\{|\}"
             )).unwrap();
         }
@@ -73,7 +73,33 @@ impl<'s> Reader<'s> {
                 "'" => {
                     match self.read()? {
                         Some(v) => {
-                            Ok(Some(refcount_list![ Value::Name("quote".into()).rc(), v ]))
+                            let wrapped_expr = refcount_list![ Value::Name("quote".into()).rc(), v ];
+
+                            Ok(Some(wrapped_expr))
+                        },
+
+                        None => Ok(None)
+                    }
+                }
+
+                "`" => {
+                    match self.read()? {
+                        Some(v) => {
+                            let wrapped_expr = refcount_list![ Value::Name("quasiquote".into()).rc(), v ];
+
+                            Ok(Some(wrapped_expr))
+                        },
+
+                        None => Ok(None)
+                    }
+                }
+
+                "," => {
+                    match self.read()? {
+                        Some(v) => {
+                            let wrapped_expr = refcount_list![ Value::Name("unquote".into()).rc(), v ];
+
+                            Ok(Some(wrapped_expr))
                         },
 
                         None => Ok(None)
