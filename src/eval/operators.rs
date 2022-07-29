@@ -23,7 +23,9 @@ pub fn arithmetic_expression(op: &String, args: &Vec<Rc<Value>>, evaluator: &mut
     let mut result_is_float = false;
 
     for arg in args.iter() {
-        match &*evaluator.eval(arg)? {
+        let arg = evaluator.eval(arg)?;
+
+        match &*arg {
             Value::Float(_) => {
                 result_is_float = true;
                 numbers.push(arg.clone());
@@ -123,7 +125,7 @@ pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Val
             match (&*evaluator.eval(dividend)?, &*evaluator.eval(divisor)?) {
                 (Value::Float(x), Value::Float(y)) => Ok(Value::Float(x.clone() % y.clone()).rc()),
 
-                (Value::Float(_), Value::Integer(_)) => new_error!("Liszp: Cannot take the integer modulo of a float").into(),
+                (Value::Float(_), Value::Integer(_)) => new_error!("cannot take the integer modulo of a float").into(),
 
                 (Value::Integer(x), Value::Integer(y)) => Ok(Value::Integer(x.clone() % y.clone()).rc()),
 
@@ -131,7 +133,7 @@ pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Val
             }
         },
 
-        _ => new_error!("Liszp: modulo expressions take exactly 2 arguments").into()
+        _ => new_error!("modulo expressions take exactly 2 arguments").into()
     }
 }
 
@@ -145,12 +147,12 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
         [x, y] => {
             let x = match &*evaluator.eval(x)? {
                 Value::Bool(b) => *b,
-                _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
+                _ => return new_error!("{} expressions take boolean arguments", op).into()
             };
 
             let y = match &*evaluator.eval(y)? {
                 Value::Bool(b) => *b,
-                _ => return new_error!("Liszp: {} expressions take boolean arguments", op).into()
+                _ => return new_error!("{} expressions take boolean arguments", op).into()
             };
 
             let result = match op.as_str() {
@@ -163,7 +165,7 @@ pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &
             Ok(Value::Bool(result).rc())
         }
 
-        _ => new_error!("Liszp: {} expressions take exactly 2 arguments", op).into()
+        _ => new_error!("{} expressions take exactly 2 arguments", op).into()
     }
 }
 
@@ -175,11 +177,11 @@ pub fn logical_negation(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Res
         [x] => {
             match &*evaluator.eval(x)? {
                 Value::Bool(b) => Ok(Value::Bool(!*b).rc()),
-                _ => new_error!("Liszp: not expressions take a boolean argument").into()
+                _ => new_error!("'not' expressions take a boolean argument").into()
             }
         }
 
-        _ => new_error!("Liszp: not expressions take exactly 1 argument").into()
+        _ => new_error!("'not' expressions take exactly 1 argument").into()
     }
 }
 
@@ -213,11 +215,11 @@ pub fn comparison(op: &String, args: &Vec<Rc<Value>>, evaluator: &mut Evaluator)
                     Ok(float_comparison(op, x, y))
                 }
 
-                _ => new_error!("Liszp: {} expressions take two numeric values", op).into()
+                _ => new_error!("{} expressions take two numeric values", op).into()
             }
         }
 
-        _ => new_error!("Liszp: {} expressions take exactly 2 values", op).into()
+        _ => new_error!("{} expressions take exactly 2 values", op).into()
     }
 }
 
