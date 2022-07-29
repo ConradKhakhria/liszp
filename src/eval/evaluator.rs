@@ -58,7 +58,7 @@ impl Evaluator {
     pub fn preprocess(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
         /* Preprocesses an expression */
 
-        let macro_expanded = macros::expand_macros(expr, self)?;
+        let macro_expanded = macros::recursively_expand_macros(expr, self)?;
         let parsed_lambdas = Self::parse_lambdas(&macro_expanded)?;
 
         Ok(parsed_lambdas)
@@ -323,7 +323,4 @@ impl Evaluator {
             self.env.insert(key.clone(), replaced_values.get(key).unwrap().clone());
         }
     }
-
-
-
 }
