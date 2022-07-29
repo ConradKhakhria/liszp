@@ -10,9 +10,9 @@ pub fn car(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>
 
     match args.as_slice() {
         [cons] => {
-            match &**cons {
-                Value::Cons { car, .. } => evaluator.eval(car),
-                _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
+            match &*evaluator.eval(cons)? {
+                Value::Cons { car, .. } => Ok(car.clone()),
+                _ => new_error!("Liszp: function 'car' expected to receive cons pair").into()
             }
         },
 
@@ -26,9 +26,9 @@ pub fn cdr(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>
 
     match args.as_slice() {
         [cons] => {
-            match &**cons {
-                Value::Cons { cdr, .. } => evaluator.eval(cdr),
-                _ => new_error!("Liszp: function 'cons' expected to receive cons pair").into()
+            match &*evaluator.eval(cons)? {
+                Value::Cons { cdr, .. } => Ok(cdr.clone()),
+                _ => new_error!("Liszp: function 'cdr' expected to receive cons pair").into()
             }
         },
 
