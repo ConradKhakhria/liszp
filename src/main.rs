@@ -1,4 +1,3 @@
-mod cps;
 mod error;
 mod eval;
 mod macros;
