@@ -20,10 +20,14 @@ fn main() {
         }
     }
 
-    let mut evaluator = eval::Evaluator::new();
-
     match filename {
         Some(fname) => {
+            let mut evaluator = eval::Evaluator::new();
+
+            if let Err(e) = evaluator.load_stdlib() {
+                e.println();
+            }
+
             if let Err(e) = evaluator.eval_file(fname) {
                 e.println();
             }

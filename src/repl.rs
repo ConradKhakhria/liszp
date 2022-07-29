@@ -82,6 +82,10 @@ pub fn run_repl() {
 
     let mut evaluator = Evaluator::new();
 
+    if let Err(e) = evaluator.load_stdlib() {
+        e.println();
+    }
+
     loop {
         match repl_iteration(&mut evaluator) {
             Ok(v) => println!("{}", v),
