@@ -130,8 +130,6 @@ impl Evaluator {
 
         let value = self.preprocess(expr)?;
 
-        println!("{}", &value);
-
         match &*value {
             Value::Cons { car: function, cdr: args } => {
                 let function_name = function.name();
