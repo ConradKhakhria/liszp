@@ -1,10 +1,8 @@
-use crate::cps;
 use crate::read;
 use crate::error::Error;
 use crate::eval::{ builtin, operators };
 use crate::new_error;
 use crate::macros;
-use crate::refcount_list;
 use crate::value::Value;
 use std::collections::HashMap;
 use std::io::Write;
@@ -16,7 +14,7 @@ type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
     evaluated: Vec<Rc<Value>>,
-    globals: ValueMap,
+    env: ValueMap,
     pub macros: HashMap<String, macros::Macro>,
 }
 
@@ -25,7 +23,7 @@ impl Evaluator {
     pub fn new() -> Self {
         Evaluator {
             evaluated: vec![],
-            globals: HashMap::new(),
+            env: HashMap::new(),
             macros: HashMap::new(),
         }
     }
@@ -34,79 +32,26 @@ impl Evaluator {
     /* Env-related functions */
 
 
-    pub fn add_global_value<T: ToString>(&mut self, name: T, value: &Rc<Value>) {
-        /* Adds a global value */
-
-        self.globals.insert(name.to_string(), value.clone());
-    }
-
-
-    pub fn remove_global_value<T: ToString>(&mut self, name: T) {
-        /* Removes a value from the global namespace */
-
-        self.globals.remove(&name.to_string());
-    }
-
-
     fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Defines a value in self.globals */
     
-        if args.len() != 3 {
+        if args.len() != 2 {
             return new_error!("Liszp: expected syntax (def <name> <value>)").into();
         }
-    
-        let continuation = &args[0];
-        let name = &args[1];
-        let value = self.resolve_globals(&args[2..].to_vec())[0].clone();
+
+        let name = &args[0];
+        let value = self.eval(&args[1])?;
     
         if let Value::Name(name) = &**name {
-            self.globals.insert(name.clone(), self.error_on_name(&value)?);
+            self.env.insert(name.clone(), value.clone());
         } else {
             return new_error!("Liszp: expected name in def expression").into();
         }
+
+        Ok(Value::Nil.rc())
+    }
+
     
-        Ok(refcount_list![ continuation.clone(), Value::Nil.rc() ])
-    }
-
-
-    pub fn resolve_globals(&self, args: &Vec<Rc<Value>>) -> Vec<Rc<Value>> {
-        /* Replaces args which are named globals with the global values */
-
-        let mut resolved_args = Vec::with_capacity(args.len());
-
-        for arg in args.iter() {
-            match &**arg {
-                Value::Name(name) => {
-                    match self.globals.get(name) {
-                        Some(v) => resolved_args.push(v.clone()),
-                        None => resolved_args.push(arg.clone())
-                    }
-                },
-
-                _ => resolved_args.push(arg.clone())
-            }
-        }
-
-        resolved_args
-    }
-
-
-    pub fn error_on_name(&self, value: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* Returns an error if value is a name */
-
-        match &**value {
-            Value::Name(name) => {
-                if name == "&no-continuation" {
-                    Ok(value.clone())
-                } else {
-                    new_error!("unbound name '{}'", name).into()
-                }
-            },
-            _ => Ok(value.clone())
-        }
-    }
-
-
     /* Preprocessing */
 
 
@@ -114,9 +59,8 @@ impl Evaluator {
         /* Preprocesses an expression */
 
         let macro_expanded = macros::expand_macros(expr, self)?;
-        let cps_converted = cps::convert_expr(&macro_expanded)?;
 
-        Ok(cps_converted)
+        Ok(macro_expanded)
     }
 
 
@@ -124,54 +68,58 @@ impl Evaluator {
 
 
     pub fn eval(&mut self, expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
-        /* Evaluates an expression in Env */
+        /* Evaluates an expression */
 
-        let mut value = self.preprocess(expr)?;
+        let value = self.preprocess(expr)?;
 
-        while let Value::Cons { car: function, cdr: args  } = &*value {
-            let function_name = function.name();
-            let args = args.to_list().expect("Liszp: expected a list of arguments");
+        println!("{}", &value);
 
-            value = match function_name.as_str() {
-                "bool?"          => builtin::value_is_bool(&args, self)?,
-                "car"            => builtin::car(&args, self)?,
-                "cdr"            => builtin::cdr(&args, self)?,
-                "cons"           => builtin::cons(&args, self)?,
-                "cons?"          => builtin::value_is_cons(&args, self)?,
-                "def"            => self.define_value(&args)?,
-                "equals?"        => builtin::values_are_equal(&args, self)?,
-                "eval"           => builtin::eval_quoted(&args, self)?,
-                "float"          => builtin::value_is_float(&args, self)?,
-                "if"             => builtin::if_expr(&args, self)?,
-                "int?"           => builtin::value_is_int(&args, self)?,
-                "name?"          => builtin::value_is_name(&args)?,
-                "nil?"           => builtin::value_is_nil(&args, self)?,
-                "panic"          => builtin::panic(&args, self)?,
-                "print"          => builtin::print_value(&args, self, false)?,
-                "println"        => builtin::print_value(&args, self, true)?,
-                "quote"          => builtin::quote_value(&args)?,
-                "str?"           => builtin::value_is_str(&args, self)?,
-                "+"|"-"|"*"|"/"  => operators::arithmetic_expression(&function_name, &args, self)?,
-                "%"              => operators::modulo(&args, self)?,
-                "and"|"or"|"xor" => operators::binary_logical_operation(&function_name, &args, self)?,
-                "not"            => operators::logical_negation(&args, self)?,
-                "<"|">"|"<="|">="|
-                "=="|"!="        => operators::comparison(&function_name, &args, self)?,
+        match &*value {
+            Value::Cons { car: function, cdr: args } => {
+                let function_name = function.name();
+                let args = match args.to_list() {
+                    Some(xs) => xs,
+                    None => return new_error!("expected a list of args").into()
+                };
 
-                "&no-continuation" => {
-                    if args.len() == 1 {
-                        value = args[0].clone();
-                        break;
-                    } else {
-                        unreachable!()
-                    }
-                },
+                match function_name.as_str() {
+                    "bool?"          => builtin::value_is_bool(&args, self),
+                    "car"            => builtin::car(&args, self),
+                    "cdr"            => builtin::cdr(&args, self),
+                    "cons"           => builtin::cons(&args, self),
+                    "cons?"          => builtin::value_is_cons(&args, self),
+                    "def"            => self.define_value(&args),
+                    "equals?"        => builtin::values_are_equal(&args, self),
+                    "eval"           => builtin::eval_quoted(&args, self),
+                    "float"          => builtin::value_is_float(&args, self),
+                    "if"             => builtin::if_expr(&args, self),
+                    "int?"           => builtin::value_is_int(&args, self),
+                    "name?"          => builtin::value_is_name(&args),
+                    "nil?"           => builtin::value_is_nil(&args, self),
+                    "panic"          => builtin::panic(&args, self),
+                    "print"          => builtin::print_value(&args, self, false),
+                    "println"        => builtin::print_value(&args, self, true),
+                    "quote"          => builtin::quote_value(&args),
+                    "str?"           => builtin::value_is_str(&args, self),
+                    "+"|"-"|"*"|"/"  => operators::arithmetic_expression(&function_name, &args, self),
+                    "%"              => operators::modulo(&args, self),
+                    "and"|"or"|"xor" => operators::binary_logical_operation(&function_name, &args, self),
+                    "not"            => operators::logical_negation(&args, self),
+                    "<"|">"|"<="
+                    |">="|"=="|"!="  => operators::comparison(&function_name, &args, self),
+                    _                => self.evaluate_lambda_funcall(function, &args)
+                }
+            },
 
-                _ => self.evaluate_lambda_funcall(function, &args)?,
-            }
+            Value::Name(name) => {
+                match self.env.get(name) {
+                    Some(v) => Ok(v.clone()),
+                    None => new_error!("value '{}' is undefined", name).into()
+                }
+            },
+
+            _ => Ok(value.clone())
         }
-
-        Ok(value)
     }
 
 
@@ -271,28 +219,61 @@ impl Evaluator {
     /* function evaluation */
 
 
-    fn evaluate_lambda_funcall(&self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+    fn evaluate_lambda_funcall(&mut self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
-        let resolved_function = self.resolve_globals(&vec![ function.clone() ])[0].clone();
-
-        let function_components = match self.error_on_name(&resolved_function)?.to_list() {
+        let function_components = match self.eval(&function)?.to_list() {
             Some(xs) => xs,
-            None => return new_error!("function should have syntax (lambda <args> <body>)").into()
+            None => return new_error!("value '{}' is not a function", function).into()
         };
 
-        if function_components.len() != 3 {
-            return new_error!("function should have syntax (lambda <args> <body>)").into();
-        } else if function_components[0].name() != "lambda" {
-            return new_error!("Liszp: attempt to call a non-function value").into();
+
+        match function_components.as_slice() {
+            [kwd_lambda, args, body] => {
+                if kwd_lambda.name() != "lambda" {
+                    return new_error!("Liszp: attempt to call a non-function value").into();
+                }
+
+                let arg_names = Self::get_arg_names(args)?;
+                let replaced_values = self.add_args_to_env(&arg_names, arg_values)?;
+
+                let result = self.eval(body);
+
+                self.replace_old_values(&replaced_values);
+
+                result
+            }
+
+            _ => new_error!("function should have syntax (lambda <args> <body>)").into()
+        }
+    }
+
+
+    fn add_args_to_env(&mut self, arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> Result<ValueMap, Error> {
+        /* Adds the values */
+
+        if arg_names.len() != arg_values.len() {
+            return new_error!("function expected {} arguments but received {}", arg_names.len(), arg_values.len()).into();
+        }
+        
+        let mut replaced_values = HashMap::new();
+
+        for i in 0..arg_names.len() {
+            if let Some(old_value) = self.env.insert(arg_names[i].clone(), arg_values[i].clone()) {
+                replaced_values.insert(arg_names[i].clone(), old_value);
+            }
         }
 
-        let arg_names = Self::get_arg_names(&function_components[1])?;
-        let mut arg_map = self.build_argument_hashmap(&arg_names, arg_values)?;
+        Ok(replaced_values)
+    }
 
-        let function_body = &function_components[2];
 
-        self.recursively_bind_args(function_body, &mut arg_map)
+    fn replace_old_values(&mut self, replaced_values: &ValueMap) {
+        /* Replaces all new values in self.env with these old ones */
+
+        for key in replaced_values.keys() {
+            self.env.insert(key.clone(), replaced_values.get(key).unwrap().clone());
+        }
     }
 
 
@@ -320,86 +301,7 @@ impl Evaluator {
 
             Value::Nil => Ok(vec![]),
 
-            _ => return new_error!("Liszp: Function expected a list of arguments or a single argument in lambda expression").into()
+            _ => new_error!("Liszp: Function expected a list of arguments or a single argument in lambda expression").into()
         }
-    }
-
-
-    fn build_argument_hashmap(&self, arg_names: &Vec<String>, arg_values: &Vec<Rc<Value>>) -> Result<ValueMap, Error> {
-        /* Builds a map from argument names to argument values */
-
-        let mut hashmap = HashMap::new();
-        let arg_values = self.resolve_globals(arg_values);
-
-        if arg_names.len() != arg_values.len() {
-            return new_error!("Function takes {} arguments but received {}", arg_names.len(), arg_values.len()).into();
-        }
-
-        for i in 0..arg_names.len() {
-            hashmap.insert(arg_names[i].clone(), arg_values[i].clone());
-        }
-
-        Ok(hashmap)
-    }
-
-
-    fn recursively_bind_args(&self, expr: &Rc<Value>, arg_map: &mut ValueMap) -> Result<Rc<Value>, Error> {
-        /* Returns function_body but with argument names replaced with their values */
-
-        match &**expr {
-            Value::Name(name) => {
-                if let Some(value) = arg_map.get(name) {
-                    Ok(value.clone())
-                } else {
-                    Ok(expr.clone())
-                }
-            },
-
-            Value::Cons { car, cdr } => {
-                if car.name() == "lambda" {
-                    let lambda_components = match expr.to_list() {
-                        Some(xs) => xs,
-                        _ => return new_error!("malformed lambda expression").into()
-                    };
-
-                    let arg_component = &lambda_components[1];
-                    let body_component = &lambda_components[2];
-
-                    let shadowed_arguments = Self::remove_shadowed_arguments(arg_component, arg_map)?;
-
-                    let body_with_bound_arguments = self.recursively_bind_args(body_component, arg_map);
-
-                    arg_map.extend(shadowed_arguments);
-
-                    Ok(refcount_list![
-                        lambda_components[0].clone(),
-                        arg_component.clone(),
-                        body_with_bound_arguments?
-                    ])
-                } else {
-                    Ok(Rc::new(Value::Cons {
-                        car: self.recursively_bind_args(car, arg_map)?,
-                        cdr: self.recursively_bind_args(cdr, arg_map)?
-                    }))
-                }
-            }
-
-            _ => Ok(expr.clone())
-        }
-    }
-
-
-    fn remove_shadowed_arguments(arg_component: &Rc<Value>, arg_map: &mut ValueMap) -> Result<ValueMap, Error> {
-        /* Removes any arguments from arg_map that are shadowed in lambda_components */
-
-        let mut shadowed_args = HashMap::new();
-
-        for arg_name in Self::get_arg_names(arg_component)? {
-            if let Some(removed_value) = arg_map.remove(&arg_name) {
-                shadowed_args.insert(arg_name, removed_value);
-            }
-        }
-
-        Ok(shadowed_args)
     }
 }
