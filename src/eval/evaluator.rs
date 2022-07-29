@@ -59,8 +59,66 @@ impl Evaluator {
         /* Preprocesses an expression */
 
         let macro_expanded = macros::expand_macros(expr, self)?;
+        let parsed_lambdas = Self::parse_lambdas(&macro_expanded)?;
 
-        Ok(macro_expanded)
+        Ok(parsed_lambdas)
+    }
+
+
+    pub fn parse_lambdas(expr: &Rc<Value>) -> Result<Rc<Value>, Error> {
+        /* Searches an expression for lambda exprs and turns them into Value::Lambda's */
+
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => return Ok(expr.clone())
+        };
+
+        if components.is_empty() || components[0].name() != "lambda" {
+            return Ok(expr.clone());
+        }
+
+        match components.as_slice() {
+            [_kwd_lambda, args, body] => {
+                let arg_names = Self::get_arg_names(args)?;
+                let lambda = Value::Lambda {
+                    args: arg_names,
+                    body: body.clone()
+                };
+
+                Ok(lambda.rc())
+            },
+
+            _ => new_error!("lambda expressions take the form (lambda <args> <body>").into()
+        }
+    }
+
+    
+    fn get_arg_names(arg_component: &Rc<Value>) -> Result<Vec<String>, Error> {
+        /* Gets the list of argument names from the argument component */
+
+        match &**arg_component {
+            Value::Cons {..} => {
+                let values_list = arg_component.to_list().unwrap();
+                let mut names = Vec::with_capacity(values_list.len());
+
+                for v in values_list.iter() {
+                    match &**v {
+                        Value::Name(name) => names.push(name.clone()),
+                        _ => return new_error!("Liszp: Expected name in function argument").into()
+                    }
+                }
+
+                Ok(names)
+            }
+
+            Value::Name(name) => {
+                Ok(vec![ name.clone() ])
+            }
+
+            Value::Nil => Ok(vec![]),
+
+            _ => new_error!("Liszp: Function expected a list of arguments or a single argument in lambda expression").into()
+        }
     }
 
 
@@ -222,30 +280,20 @@ impl Evaluator {
     fn evaluate_lambda_funcall(&mut self, function: &Rc<Value>, arg_values: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Evaluates the calling of a non-built-in function */
 
-        let function_components = match self.eval(&function)?.to_list() {
-            Some(xs) => xs,
-            None => return new_error!("value '{}' is not a function", function).into()
+        let evaluated_function = self.eval(&function)?;
+
+        let (arg_names, body) = match &*evaluated_function {
+            Value::Lambda { args, body } => (args, body),
+            _ => return new_error!("expected function, received {}", function).into()
         };
 
+        let replaced_values = self.add_args_to_env(&arg_names, arg_values)?;
 
-        match function_components.as_slice() {
-            [kwd_lambda, args, body] => {
-                if kwd_lambda.name() != "lambda" {
-                    return new_error!("Liszp: attempt to call a non-function value").into();
-                }
+        let result = self.eval(&body);
 
-                let arg_names = Self::get_arg_names(args)?;
-                let replaced_values = self.add_args_to_env(&arg_names, arg_values)?;
+        self.replace_old_values(&replaced_values);
 
-                let result = self.eval(body);
-
-                self.replace_old_values(&replaced_values);
-
-                result
-            }
-
-            _ => new_error!("function should have syntax (lambda <args> <body>)").into()
-        }
+        result
     }
 
 
@@ -259,7 +307,9 @@ impl Evaluator {
         let mut replaced_values = HashMap::new();
 
         for i in 0..arg_names.len() {
-            if let Some(old_value) = self.env.insert(arg_names[i].clone(), arg_values[i].clone()) {
+            let evaluated_arg = self.eval(&arg_values[i])?;
+
+            if let Some(old_value) = self.env.insert(arg_names[i].clone(), evaluated_arg) {
                 replaced_values.insert(arg_names[i].clone(), old_value);
             }
         }
@@ -277,31 +327,5 @@ impl Evaluator {
     }
 
 
-    fn get_arg_names(arg_component: &Rc<Value>) -> Result<Vec<String>, Error> {
-        /* Gets the list of argument names from the argument component */
 
-        match &**arg_component {
-            Value::Cons {..} => {
-                let values_list = arg_component.to_list().unwrap();
-                let mut names = Vec::with_capacity(values_list.len());
-
-                for v in values_list.iter() {
-                    match &**v {
-                        Value::Name(name) => names.push(name.clone()),
-                        _ => return new_error!("Liszp: Expected name in function argument").into()
-                    }
-                }
-
-                Ok(names)
-            }
-
-            Value::Name(name) => {
-                Ok(vec![ name.clone() ])
-            }
-
-            Value::Nil => Ok(vec![]),
-
-            _ => new_error!("Liszp: Function expected a list of arguments or a single argument in lambda expression").into()
-        }
-    }
 }
