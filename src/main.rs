@@ -2,6 +2,7 @@ mod error;
 mod eval;
 mod macros;
 mod read;
+mod repl;
 mod value;
 
 fn main() {
@@ -28,11 +29,6 @@ fn main() {
             }
         }
 
-        None => loop {
-            match evaluator.repl_iteration() {
-                Ok(value) => println!("{}", value),
-                Err(e) => e.println()
-            }
-        }
+        None => repl::run_repl()
     }
 }
