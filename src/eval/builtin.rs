@@ -66,8 +66,6 @@ pub fn eval_quoted(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<R
 pub fn if_expr(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     /* Evaluates an if expression */
 
-    let args = evaluator.resolve_globals(args);
-
     match args.as_slice() {
         [cond, true_case, false_case] => {
             if let Value::Bool(b) = &*evaluator.eval(cond)? {
