@@ -140,33 +140,33 @@ pub fn modulo(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Val
 
 /* Logic */
 
-pub fn binary_logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
+pub fn logical_operation(op: &String, args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     /* Evaluates a binary logical operation */
 
-    match args.as_slice() {
-        [x, y] => {
-            let x = match &*evaluator.eval(x)? {
-                Value::Bool(b) => *b,
-                _ => return new_error!("{} expressions take boolean arguments", op).into()
-            };
-
-            let y = match &*evaluator.eval(y)? {
-                Value::Bool(b) => *b,
-                _ => return new_error!("{} expressions take boolean arguments", op).into()
-            };
-
-            let result = match op.as_str() {
-                "and" => x && y,
-                "or"  => x || y,
-                "xor" => x ^ y,
-                _      => unreachable!()
-            };
-
-            Ok(Value::Bool(result).rc())
-        }
-
-        _ => new_error!("{} expressions take exactly 2 arguments", op).into()
+    if args.len() < 2 {
+        return new_error!("cannot apply '{}' expression to only {} arg", op, args.len()).into();
     }
+
+    let mut boolean_result = match &*evaluator.eval(&args[0])? {
+        Value::Bool(b) => *b,
+        _ => return new_error!("{} expressions take boolean arguments", op).into()
+    };
+
+    for arg in args[1..].iter() {
+        let boolean = match &*evaluator.eval(arg)? {
+            Value::Bool(b) => *b,
+            _ => return new_error!("{} expressions take boolean arguments", op).into()
+        };
+
+        match op.as_str() {
+            "and" => boolean_result = boolean_result && boolean,
+            "or"  => boolean_result = boolean_result || boolean,
+            "xor" => boolean_result = boolean_result ^  boolean,
+            _ => unreachable!()
+        }
+    }
+
+    Ok(Value::Bool(boolean_result).rc())
 }
 
 
