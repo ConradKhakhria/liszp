@@ -1,3 +1,5 @@
+# ones we keep quiet
+
 (def quasiquote-rec (lambda x
     # This function is invoked wherever a quasiquote is used
     (if (cons? x)
@@ -5,3 +7,24 @@
             (eval (car (cdr x)))
             (cons (quasiquote-rec (car x)) (quasiquote-rec (cdr x))))
         x)))
+    
+
+# standard library
+
+(defun (len xs)
+    (if (nil? xs)
+        0
+    (if (cons? xs)
+        (+ 1 (len (cdr xs)))
+        (panic "Cannot take the length of a non-list value))))
+
+
+(defun (max xs)
+    (if (== 0 (len xs))
+        (error "cannot get max of empty list")
+    (if (== 1 (len xs))
+        (car xs)
+    (if (> (car xs) (max (cdr xs)))
+        (car xs)
+        (max (cdr xs))))))
+
