@@ -12,9 +12,9 @@ use std::rc::Rc;
 type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
-    pub evaluated: Vec<Rc<Value>>,
-    pub env: ValueMap,
-    pub macros: HashMap<String, macros::Macro>,
+    evaluated: Vec<Rc<Value>>,
+    env: ValueMap,
+    macros: HashMap<String, macros::Macro>,
 }
 
 
@@ -35,6 +35,23 @@ impl Evaluator {
         self.eval_file("liszp-stdlib/std-functions.lzp", true)?;
 
         Ok(())
+    }
+
+
+    /* Getters */
+
+
+    pub fn get_env(&mut self) -> &mut ValueMap {
+        /* Returns a mutable reference to env */
+
+        &mut self.env
+    }
+
+
+    pub fn get_macros(&mut self) -> &mut HashMap<String, macros::Macro> {
+        /* Returns a mutable reference to the macro map */
+
+        &mut self.macros
     }
 
 
@@ -241,7 +258,7 @@ impl Evaluator {
 
         let (arg_names, body) = match &*evaluated_function {
             Value::Lambda { args, body } => (args, body),
-            _ => return new_error!("expected function, received {}", function).into()
+            _ => return new_error!("expected function, received '{}'", function).into()
         };
 
         let replaced_values = self.add_args_to_env(&arg_names, arg_values)?;
