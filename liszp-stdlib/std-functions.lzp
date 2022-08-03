@@ -1,0 +1,7 @@
+(def quasiquote-rec (lambda x
+    # This function is invoked wherever a quasiquote is used
+    (if (cons? x)
+        (if (equals? (car x) 'unquote)
+            (eval (car (cdr x)))
+            (cons (quasiquote-rec (car x)) (quasiquote-rec (cdr x))))
+        x)))
