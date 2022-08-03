@@ -32,11 +32,6 @@ impl Evaluator {
         /* Loads standard macros and functions into the namespace */
 
         self.eval_file("liszp-stdlib/std-macros.lzp", true)?;
-
-        // the macro library defines a number of helper functions
-        // which need to be removed from the namespace
-        self.env.clear();
-
         self.eval_file("liszp-stdlib/std-functions.lzp", true)?;
 
         Ok(())
