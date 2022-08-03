@@ -32,3 +32,17 @@
         `((lambda ,(car (car bindings)) ,(let (cdr bindings) expr))
             ,(car (cdr (car bindings))))))
 
+
+
+##### cond #####
+
+
+(defmacro (cond @ cases)
+    # cases = (condition branch condition branch ..)
+    (if (nil? cases)
+        '(panic "No branches of this cond expression were satisfied")
+    (if (and (cons? cases) (cons? (cdr cases))  )
+        `(if ,(car cases)
+            ,(car (cdr cases))
+            ,(eval (list 'cond (list 'quote (cdr (cdr cases))) )))
+        (panic "improperly formatted cond expression"))))
