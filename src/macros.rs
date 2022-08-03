@@ -52,7 +52,7 @@ impl Macro {
                         }
 
                         if let Value::Name(_) = &*arg_components[i + 1] {
-                            named_args.push(arg_components[i].clone());
+                            named_args.push(arg_components[i + 1].clone());
 
                             let macro_args = MacroArgs::Variadic {
                                 arg_names: Value::cons_list(&named_args),
