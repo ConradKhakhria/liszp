@@ -26,6 +26,7 @@ fn main() {
 
             if let Err(e) = evaluator.load_stdlib() {
                 e.println();
+                panic!("error in stdlib");
             }
 
             if let Err(e) = evaluator.eval_file(fname) {
