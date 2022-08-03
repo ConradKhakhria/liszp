@@ -25,13 +25,10 @@
 ##### let #####
 
 
-(defun (let-rec bindings expr)
+(defmacro (let bindings expr)
     # bindings = ((a1 v1) (a2 v2) ..)
     (if (nil? bindings)
         expr
-        `((lambda ,(car (car bindings)) ,(let-rec (cdr bindings) expr))
+        `((lambda ,(car (car bindings)) ,(let (cdr bindings) expr))
             ,(car (cdr (car bindings))))))
 
-
-(defmacro (let bindings expr)
-    (let-rec bindings expr))
