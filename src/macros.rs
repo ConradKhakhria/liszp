@@ -15,13 +15,15 @@ use std::rc::Rc;
 /* Macro struct */
 
 
+#[derive(Clone)]
 pub struct Macro {
     name: Rc<Value>,
     args: MacroArgs,
-    body: Rc<Value>
+    macro_as_function: Rc<Value>
 }
 
 
+#[derive(Clone)]
 enum MacroArgs {
     Finite(Rc<Value>),
 
@@ -36,65 +38,6 @@ enum MacroArgs {
 impl Macro {
 
     /* Parsing macro definitions */
-
-    fn from_expr(expr: &Rc<Value>) -> Result<Option<Macro>, Error> {
-       /* Attempts to parse a macro definition
-        *
-        * returns
-        * -------
-        * - Err(error)  if an error occurs
-        * - Ok(None)    if the expr is not a macro definition
-        * - Ok(Some(m)) if the expr is a macro definition
-        */
-
-        let components = match expr.to_list() {
-            Some(xs) => xs,
-            None => return Ok(None)
-        };
-    
-        if components.is_empty() || components[0].name() != "defmacro" {
-            return Ok(None);
-        }
-    
-        if components.len() != 3 {
-            return new_error!("expected syntax (defmacro <macro-signature> <macro-body>").into();
-        }
-
-        let (name, args) = Self::parse_macro_signature(&components[1])?;
-
-        Ok(Some(
-            Macro {
-                name,
-                args,
-                body: components[2].clone()
-            }
-        ))
-    }
-
-
-    fn parse_macro_signature(expr: &Rc<Value>) -> Result<(Rc<Value>, MacroArgs), Error> {
-        /* Parses the name and arg names of a macro */
-
-        let signature_components = match expr.to_list() {
-            Some(xs) => xs,
-            None => return new_error!("expected the macro signature to be a list (<name> <args>..)").into()
-        };
-    
-        if signature_components.is_empty() {
-            return new_error!("A macro definition cannot have an empty signature").into();
-        }
-
-        let name = signature_components[0].clone();
-
-        if name.name() == "" {
-            return new_error!("macro definition expects an identifier for a name").into();
-        }
-
-        let args = Self::parse_macro_args(name.name(), &signature_components[1..])?;
-
-        Ok((name, args))
-    }
-
 
     fn parse_macro_args(macro_name: String, arg_components: &[Rc<Value>]) -> Result<MacroArgs, Error> {
         /* Pareses a macro signature's arguments */
@@ -135,30 +78,101 @@ impl Macro {
     }
 
 
-    /* Misc */
+    fn parse_macro_definition(expr: &Rc<Value>) -> Result<Option<Self>, Error> {
+       /* Parses a macro definition if one is defined in expr
+        *
+        * returns
+        * -------
+        * - Err(error)  if an error occurs
+        * - Ok(None)    if the expr is not a macro definition
+        * - Ok(Some(m)) if the expr is a macro definition
+        */
 
-    fn to_executable_expression(&self, supplied_args: Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
-        /* Creates an executable expression from self and supplied arguments */
+        let components = match expr.to_list() {
+            Some(xs) => xs,
+            None => return Ok(None)
+        };
+    
+        if components.is_empty() || components[0].name() != "defmacro" {
+            return Ok(None);
+        }
+    
+        if components.len() != 3 {
+            return new_error!("expected syntax (defmacro <macro-signature> <macro-body>").into();
+        }
 
-        let quoted_supplied_args = self.generate_quoted_args(supplied_args)?;
-
-        let defined_arg_names = match &self.args {
-            MacroArgs::Finite(xs) => xs.clone(),
-            MacroArgs::Variadic { variadic_name, .. } => variadic_name.clone()
+        let signature_components = match components[1].to_list() {
+            Some(xs) => xs,
+            None => return new_error!("expected the macro signature to be a list (<name> <args>..)").into()
         };
 
-        let macro_as_function = refcount_list![
-            Value::Name("lambda".into()).rc(),
-            defined_arg_names,
-            self.body.clone()
-        ];
+        if signature_components.is_empty(){
+            return new_error!("A macro definition cannot have an empty signature").into();   
+        }
 
-        Ok(Rc::new(
-            Value::Cons {
-                car: macro_as_function,
-                cdr: Value::cons_list(&quoted_supplied_args)
+        let macro_name = match &*signature_components[0] {
+            Value::Name(_) => signature_components[0].clone(),
+            _ => return new_error!("expected name in macro definition").into()
+        };
+
+        let macro_args = Self::parse_macro_args(macro_name.name(), &signature_components[1..])?;
+
+        let macro_as_function = Self::macro_as_function(&macro_args, &components[2]);
+
+        Ok(Some(
+            Macro {
+                name: macro_name,
+                args: macro_args,
+                macro_as_function: Evaluator::parse_lambdas(&macro_as_function)?
             }
         ))
+    }
+
+
+    fn macro_as_function(macro_args: &MacroArgs, body_component: &Rc<Value>) -> Rc<Value> {
+        /* Creates an executable function out of a macro */
+
+        let function_args = match macro_args {
+            MacroArgs::Finite(xs) => xs,
+            MacroArgs::Variadic { arg_names, .. } => arg_names
+        };
+
+        refcount_list![
+            Value::Name("lambda".into()).rc(),
+            function_args.clone(),
+            body_component.clone()
+        ]
+    }
+
+
+
+    /* Macro expansion */
+
+
+    fn expand_macro(&self, components: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
+        /* Expands a macro in an expression */
+
+        // temporarily remove self from the evaluator's macro namespace
+        let old_self = evaluator.get_macros().remove(&self.name.name()).unwrap();
+
+        // add macro as function to env
+        evaluator.get_env().insert(self.name.name(), self.macro_as_function.clone());
+
+        let quoted_args = self.generate_quoted_args(components[1..].to_vec())?;
+        let executable_expr = Value::Cons {
+            car: self.name.clone(),
+            cdr: Value::cons_list(&quoted_args)
+        }.rc();
+
+        let evaluation_result = evaluator.eval(&executable_expr)?;
+
+        // remove macro as function from env
+        evaluator.get_env().remove(&self.name.name());
+
+        // return self to the macro namespace
+        evaluator.get_macros().insert(self.name.name(), old_self);
+
+        Ok(evaluation_result)
     }
 
 
@@ -202,45 +216,36 @@ impl Macro {
 pub fn recursively_expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     /* Expands all macros in an expression */
 
-    match Macro::from_expr(expr)? {
-        Some(new_macro) => {
-            let new_macro_name = new_macro.name.name();
+    if let Some(new_macro) = Macro::parse_macro_definition(expr)? {
+        let new_macro_name = new_macro.name.name();
 
-            if evaluator.macros.insert(new_macro_name.clone(), new_macro).is_some() {
-                new_error!("macro '{}' has already been defined", new_macro_name).into()
-            } else {
-                Ok(Value::Nil.rc())
-            }
-        },
+        if evaluator.get_macros().insert(new_macro_name.clone(), new_macro).is_some() {
+            return new_error!("macro '{}' has already been defined", new_macro_name).into()
+        } else {
+            return Ok(Value::Nil.rc())
+        }
+    }
+
+    let components = match expr.to_list() {
+        Some(xs) => xs,
+        None => return Ok(expr.clone())
+    };
+
+    if components.is_empty() {
+        return Ok(expr.clone());
+    }
+
+    match evaluator.get_macros().get(&components[0].name()) {
+        Some(m) => m.clone().expand_macro(&components, evaluator),
 
         None => {
-            let components = match expr.to_list() {
-                Some(xs) => xs,
-                None => return Ok(expr.clone())
-            };
+            let mut new_components = vec![];
 
-            if components.is_empty() {
-                return Ok(expr.clone());
+            for comp in components.iter() {
+               new_components.push(recursively_expand_macros(comp, evaluator)?);
             }
 
-            match evaluator.macros.get(&components[0].name()) {
-                Some(m) => {
-                    let supplied_args = components[1..].to_vec();
-                    let executable_expr = m.to_executable_expression(supplied_args)?;
-
-                    evaluator.eval(&executable_expr)
-                },
-
-                None => {
-                    let mut new_components = vec![];
-
-                    for comp in components.iter() {
-                       new_components.push(recursively_expand_macros(comp, evaluator)?);
-                    }
-
-                    Ok(Value::cons_list(&new_components))
-                }
-            }
+            Ok(Value::cons_list(&new_components))
         }
     }
 }
