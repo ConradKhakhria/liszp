@@ -1,19 +1,37 @@
+##### quasiquote #####
+
+
+(def quasiquote-rec (lambda x
+    # This function is invoked wherever a quasiquote is used
+    (if (cons? x)
+        (if (equals? (car x) 'unquote)
+            (eval (car (cdr x)))
+            (cons (quasiquote-rec (car x)) (quasiquote-rec (cdr x))))
+        x)))
+
+
 (defmacro (quasiquote x)
     (list 'quasiquote-rec (list 'eval (list 'quote (list 'quote x)))))
 
 
 
-##################################################################
-#         as quasiquote has now been defined, all macros         #
-#         beyond this point can use backticks and commas         #
-#         for quote formatting                                   #
-##################################################################
+##### defun #####
 
 
 (defmacro (defun function-signature body)
     `(def ,(car function-signature) (lambda ,(cdr function-signature) ,body)))
 
 
-(defmacro (let name value expr)
-    `((lambda ,name ,expr) ,value))
+##### let #####
 
+
+(defun (let-rec bindings expr)
+    # bindings = ((a1 v1) (a2 v2) ..)
+    (if (nil? bindings)
+        expr
+        `((lambda ,(car (car bindings)) ,(let-rec (cdr bindings) expr))
+            ,(car (cdr (car bindings))))))
+
+
+(defmacro (let bindings expr)
+    (let-rec bindings expr))
