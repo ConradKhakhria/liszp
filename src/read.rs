@@ -25,11 +25,19 @@ type ReaderResult = Result<Option<Rc<Value>>, Error>;
 
 
 impl<'s> Reader<'s> {
-    pub fn new(source: &'s String, filename: &String) -> Self {
+    pub fn new(source: &'s String, filename: &String, permit_leading_amp: bool) -> Self {
         /* Creates a new Reader */
 
         lazy_static! {
-            static ref REGEX: Regex = Regex::new(concat!(
+            static ref REGEX_WITH_AMP: Regex = Regex::new(concat!(
+                "#.*?\n|",
+                r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
+                r"[a-zA-Z_\-\+\*/=<>:\.@&%\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
+                "\".*?\"|\'.\'|\'|\n|`|,|",
+                r"\(|\)|\[|\]|\{|\}"
+            )).unwrap();
+
+            static ref REGEX_WITHOUT_AMP: Regex = Regex::new(concat!(
                 "#.*?\n|",
                 r"0[bB][01_]+|0[xX][0-9a-fA-F_]+|[0-9][0-9_]*|",
                 r"[a-zA-Z_\-\+\*/=<>:\.@%\?!][a-zA-Z0-9_\-\+\*/=<>:\.@%\&\?!]*|",
@@ -43,7 +51,11 @@ impl<'s> Reader<'s> {
             line: 1,
             filename: filename.clone(),
             open_bracket_strings: vec![],
-            token_stream: REGEX.find_iter(source)
+            token_stream: if permit_leading_amp {
+                REGEX_WITH_AMP.find_iter(source)
+            } else {
+                REGEX_WITHOUT_AMP.find_iter(source)
+            }
         }
     }
 
@@ -209,10 +221,10 @@ impl<'s> Reader<'s> {
 }
 
 
-pub fn read(source: &String, filename: &String) -> Result<Vec<Rc<Value>>, Error> {
+pub fn read(source: &String, filename: &String, reading_stdlib: bool) -> Result<Vec<Rc<Value>>, Error> {
     /* Reads a source string into a vec of values */
 
-    let mut reader = Reader::new(source, filename);
+    let mut reader = Reader::new(source, filename, reading_stdlib);
     let mut values = vec![];
 
     while let Some(value) = reader.read()? {

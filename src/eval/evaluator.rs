@@ -31,13 +31,13 @@ impl Evaluator {
     pub fn load_stdlib(&mut self) -> Result<(), Error> {
         /* Loads standard macros and functions into the namespace */
 
-        self.eval_file("liszp-stdlib/std-macros.lzp")?;
+        self.eval_file("liszp-stdlib/std-macros.lzp", true)?;
 
         // the macro library defines a number of helper functions
         // which need to be removed from the namespace
         self.env.clear();
 
-        self.eval_file("liszp-stdlib/std-functions.lzp")?;
+        self.eval_file("liszp-stdlib/std-functions.lzp", true)?;
 
         Ok(())
     }
@@ -194,7 +194,7 @@ impl Evaluator {
     }
 
 
-    pub fn eval_file<P: AsRef<Path> + ToString>(&mut self, filepath: P) -> Result<(), Error> {
+    pub fn eval_file<P: AsRef<Path> + ToString>(&mut self, filepath: P, stdlib: bool) -> Result<(), Error> {
        /* Evaluates a source file */
 
         let filename = filepath.to_string();
@@ -202,7 +202,7 @@ impl Evaluator {
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
 
-        for expr in read::read(&source, &filename)?.iter() {
+        for expr in read::read(&source, &filename, stdlib)?.iter() {
             let evaluated = self.eval(expr)?;
 
             self.evaluated.push(evaluated);

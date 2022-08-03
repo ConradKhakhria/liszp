@@ -67,7 +67,7 @@ fn repl_iteration(evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
         panic!("cya");
     }
 
-    let exprs = read::read(&input_string, &"<repl>".to_string())?;
+    let exprs = read::read(&input_string, &"<repl>".to_string(), false)?;
 
     if exprs.len() == 1 {
         evaluator.eval(&exprs[0])

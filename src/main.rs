@@ -29,7 +29,7 @@ fn main() {
                 panic!("error in stdlib");
             }
 
-            if let Err(e) = evaluator.eval_file(fname) {
+            if let Err(e) = evaluator.eval_file(fname, false) {
                 e.println();
             }
         }
