@@ -12,8 +12,8 @@ use std::rc::Rc;
 type ValueMap = HashMap<String, Rc<Value>>;
 
 pub struct Evaluator {
-    evaluated: Vec<Rc<Value>>,
-    env: ValueMap,
+    pub evaluated: Vec<Rc<Value>>,
+    pub env: ValueMap,
     pub macros: HashMap<String, macros::Macro>,
 }
 
@@ -159,6 +159,7 @@ impl Evaluator {
                     "float"          => builtin::value_is_float(&args, self),
                     "if"             => builtin::if_expr(&args, self),
                     "int?"           => builtin::value_is_int(&args, self),
+                    "list"           => builtin::make_list(&args, self),
                     "name?"          => builtin::value_is_name(&args),
                     "nil?"           => builtin::value_is_nil(&args, self),
                     "panic"          => builtin::panic(&args, self),

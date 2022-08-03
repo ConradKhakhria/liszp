@@ -70,7 +70,7 @@ fn repl_iteration(evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     let exprs = read::read(&input_string, &"<repl>".to_string())?;
 
     if exprs.len() == 1 {
-        evaluator.eval(&exprs[1])
+        evaluator.eval(&exprs[0])
     } else {
         new_error!("REPL can only evaluate 1 expression at a time").into()
     }

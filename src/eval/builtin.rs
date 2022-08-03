@@ -89,6 +89,24 @@ pub fn if_expr(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Va
 }
 
 
+pub fn make_list(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
+    /* (list a b c ...) -> '(a b c ...) */
+
+    let mut list = Value::Nil.rc();
+
+    for arg in args.iter().rev() {
+        list = Rc::new(
+            Value::Cons {
+                car: evaluator.eval(arg)?,
+                cdr: list
+            }
+        );
+    }
+
+    Ok(list)
+}
+
+
 pub fn panic(args: &Vec<Rc<Value>>, evaluator: &mut Evaluator) -> Result<Rc<Value>, Error> {
     /* Panics */
 
