@@ -186,7 +186,7 @@ impl Evaluator {
                     "str?"           => builtin::value_is_str(&args, self),
                     "+"|"-"|"*"|"/"  => operators::arithmetic_expression(&function_name, &args, self),
                     "%"              => operators::modulo(&args, self),
-                    "and"|"or"|"xor" => operators::binary_logical_operation(&function_name, &args, self),
+                    "and"|"or"|"xor" => operators::logical_operation(&function_name, &args, self),
                     "not"            => operators::logical_negation(&args, self),
                     "<"|">"|"<="
                     |">="|"=="|"!="  => operators::comparison(&function_name, &args, self),
