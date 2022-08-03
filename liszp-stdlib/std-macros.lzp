@@ -10,6 +10,9 @@
 ##################################################################
 
 
+(defmacro (defun function-signature body)
+    `(def ,(car function-signature) (lambda ,(cdr function-signature) ,body)))
+
 
 (defmacro (let name value expr)
     `((lambda ,name ,expr) ,value))
