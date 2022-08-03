@@ -41,6 +41,30 @@ impl Evaluator {
     /* Env-related functions */
 
 
+    fn add_value_to_env<T: ToString>(&mut self, name: T, value: &Rc<Value>) -> Option<Rc<Value>> {
+       /* Adds a value to the env
+        *
+        * returns
+        * -------
+        * The value that had this name originally, if there was one
+        */
+
+        self.env.insert(name.to_string(), value.clone())
+    }
+
+
+    fn remove_value_from_env<T: ToString>(&mut self, name: T) -> Option<Rc<Value>> {
+       /* Attempts to remove a value from the env
+        *
+        * returns
+        * -------
+        * The value, if it was in the env
+        */
+
+        self.env.remove(&name.to_string())
+    }
+
+
     fn define_value(&mut self, args: &Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Defines a value in self.globals */
     
