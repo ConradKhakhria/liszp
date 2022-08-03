@@ -17,8 +17,19 @@ use std::rc::Rc;
 
 pub struct Macro {
     name: Rc<Value>,
-    args: Rc<Value>,
+    args: MacroArgs,
     body: Rc<Value>
+}
+
+
+enum MacroArgs {
+    Finite(Rc<Value>),
+
+    Variadic {
+        arg_names: Rc<Value>,
+        named_args_count: usize,
+        variadic_name: Rc<Value>
+    }
 }
 
 
@@ -49,7 +60,7 @@ impl Macro {
             return new_error!("expected syntax (defmacro <macro-signature> <macro-body>").into();
         }
 
-        let [name, args] = Self::parse_macro_signature(&components[1])?;
+        let (name, args) = Self::parse_macro_signature(&components[1])?;
 
         Ok(Some(
             Macro {
@@ -61,7 +72,7 @@ impl Macro {
     }
 
 
-    fn parse_macro_signature(expr: &Rc<Value>) -> Result<[Rc<Value>; 2], Error> {
+    fn parse_macro_signature(expr: &Rc<Value>) -> Result<(Rc<Value>, MacroArgs), Error> {
         /* Parses the name and arg names of a macro */
 
         let signature_components = match expr.to_list() {
@@ -69,42 +80,121 @@ impl Macro {
             None => return new_error!("expected the macro signature to be a list (<name> <args>..)").into()
         };
     
-        for comp in signature_components.iter() {
-            match &**comp {
-                Value::Name(_) => {},
-                _ => return new_error!("the macro signature should consist only of names").into()
+        if signature_components.is_empty() {
+            return new_error!("A macro definition cannot have an empty signature").into();
+        }
+
+        let name = signature_components[0].clone();
+
+        if name.name() == "" {
+            return new_error!("macro definition expects an identifier for a name").into();
+        }
+
+        let args = Self::parse_macro_args(name.name(), &signature_components[1..])?;
+
+        Ok((name, args))
+    }
+
+
+    fn parse_macro_args(macro_name: String, arg_components: &[Rc<Value>]) -> Result<MacroArgs, Error> {
+        /* Pareses a macro signature's arguments */
+
+        let mut named_args = vec![];
+
+        for i in 0..arg_components.len() {
+            match &*arg_components[i] {
+                Value::Name(name) => {
+                    if name == "@" {
+                        if i + 2 != arg_components.len() {
+                            return new_error!("macros with variadic parameters can only have one vararg").into();
+                        }
+
+                        if let Value::Name(_) = &*arg_components[i + 1] {
+                            named_args.push(arg_components[i].clone());
+
+                            let macro_args = MacroArgs::Variadic {
+                                arg_names: Value::cons_list(&named_args),
+                                named_args_count: named_args.len(),
+                                variadic_name: arg_components[i + 1].clone()
+                            };
+
+                            return Ok(macro_args);
+                        } else {
+                            return new_error!("Expected name for vararg").into();
+                        }
+                    } else {
+                        named_args.push(arg_components[i].clone());
+                    }
+                },
+
+                _ => return new_error!("in '{}' macro definition: expected name in macro argument", macro_name).into()
             }
         }
 
-        match &*Value::cons_list(&signature_components) {
-            Value::Cons { car, cdr } => Ok([car.clone(), cdr.clone()]),
-            _ => unreachable!()
-        }
+        Ok(MacroArgs::Finite(Value::cons_list(&named_args)))
     }
 
 
     /* Misc */
 
-    fn to_executable_expression(&self, supplied_args: Vec<Rc<Value>>) -> Rc<Value> {
+    fn to_executable_expression(&self, supplied_args: Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
         /* Creates an executable expression from self and supplied arguments */
+
+        let quoted_supplied_args = self.generate_quoted_args(supplied_args)?;
+
+        let defined_arg_names = match &self.args {
+            MacroArgs::Finite(xs) => xs.clone(),
+            MacroArgs::Variadic { variadic_name, .. } => variadic_name.clone()
+        };
 
         let macro_as_function = refcount_list![
             Value::Name("lambda".into()).rc(),
-            self.args.clone(),
+            defined_arg_names,
             self.body.clone()
         ];
+
+        Ok(Rc::new(
+            Value::Cons {
+                car: macro_as_function,
+                cdr: Value::cons_list(&quoted_supplied_args)
+            }
+        ))
+    }
+
+
+    fn generate_quoted_args(&self, supplied_args: Vec<Rc<Value>>) -> Result<Vec<Rc<Value>>, Error> {
+        /* list of args suppled to macro -> args to supply to lambda */
 
         let mut quoted_supplied_args = Vec::with_capacity(supplied_args.len());
         let quote_name = Value::Name("quote".into()).rc();
 
-        for arg in supplied_args.iter() {
-            quoted_supplied_args.push(refcount_list![ quote_name.clone(), arg.clone() ])
+        match &self.args {
+            MacroArgs::Finite(_) => {
+                for arg in supplied_args.iter() {
+                    quoted_supplied_args.push(refcount_list![ quote_name.clone(), arg.clone() ]);
+                }
+            },
+
+            MacroArgs::Variadic { named_args_count, .. } => {
+                if *named_args_count > supplied_args.len() {
+                    return new_error!("macro '{}' invoked with too few arguments", self.name.name()).into();
+                }
+
+                for i in 0..(*named_args_count - 1) {
+                    quoted_supplied_args.push(refcount_list![ quote_name.clone(), supplied_args[i].clone() ]);
+                }
+
+                let mut quoted_supplied_varargs = vec![ Value::Name("list".into()).rc() ];
+
+                for arg in supplied_args[*named_args_count - 1..].iter() {
+                    quoted_supplied_varargs.push(refcount_list![ quote_name.clone(), arg.clone() ]);
+                }
+
+                quoted_supplied_args.push(Value::cons_list(&quoted_supplied_varargs));
+            }
         }
 
-        Value::Cons {
-            car: macro_as_function,
-            cdr: Value::cons_list(&quoted_supplied_args)
-        }.rc()
+        Ok(quoted_supplied_args)
     }
 }
 
@@ -136,7 +226,7 @@ pub fn recursively_expand_macros(expr: &Rc<Value>, evaluator: &mut Evaluator) ->
             match evaluator.macros.get(&components[0].name()) {
                 Some(m) => {
                     let supplied_args = components[1..].to_vec();
-                    let executable_expr = m.to_executable_expression(supplied_args);
+                    let executable_expr = m.to_executable_expression(supplied_args)?;
 
                     evaluator.eval(&executable_expr)
                 },
