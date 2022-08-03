@@ -30,7 +30,6 @@ enum MacroArgs {
     Variadic {
         arg_names: Rc<Value>,
         named_args_count: usize,
-        variadic_name: Rc<Value>
     }
 }
 
@@ -58,7 +57,6 @@ impl Macro {
                             let macro_args = MacroArgs::Variadic {
                                 arg_names: Value::cons_list(&named_args),
                                 named_args_count: named_args.len(),
-                                variadic_name: arg_components[i + 1].clone()
                             };
 
                             return Ok(macro_args);
