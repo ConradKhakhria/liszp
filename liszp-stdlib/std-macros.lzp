@@ -1,13 +1,16 @@
-(def quasiquote-rec (lambda x
-    (if (cons? x)
-        (if (equals? (car x) 'unquote)
-            (eval (car (cdr x)))
-            (cons (quasiquote-rec (car x)) (quasiquote-rec (cdr x))))
-        x)))
-
-
 (defmacro (quasiquote x)
-    (cons
-        'quote
-        (cons (quasiquote-rec x) nil)))
+    (list 'quasiquote-rec (list 'eval (list 'quote (list 'quote x)))))
+
+
+
+##################################################################
+#         as quasiquote has now been defined, all macros         #
+#         beyond this point can use backticks and commas         #
+#         for quote formatting                                   #
+##################################################################
+
+
+
+(defmacro (let name value expr)
+    `((lambda ,name ,expr) ,value))
 
