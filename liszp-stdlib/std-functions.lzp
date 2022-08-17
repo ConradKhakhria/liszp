@@ -71,3 +71,15 @@
     (if (>= start finish)
         '()
         (cons start (range (+ start step) finish step))))
+
+
+(defun (partition f xs)
+    (if (nil? xs)
+        (cons '() '())
+        (let ([x        (car xs)]
+              [subs     (partition f (cdr xs))]
+              [true-xs  (car subs)]
+              [false-xs (cdr subs)])
+            (if (f (car xs))
+                (cons (cons x true-xs) false-xs)
+                (cons true-xs (cons x false-xs))))))
