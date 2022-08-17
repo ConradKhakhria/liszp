@@ -11,12 +11,50 @@
 
 # standard library
 
+
+(defun (filter xs f)
+    # filters the elements of xs by a function f
+    (cond
+        [nil? xs]
+            '()
+        [not (cons? xs)]
+            (panic "Cannot filter a non-list value")
+        true
+            (let ([first (car xs)]
+                  [filtered-cdr (filter (cdr xs) f)])
+            (if (f first)
+                (cons first filtered-cdr)
+                filtered-cdr))))
+
+
+(defun (foldr f v xs)
+    # folds right over a list
+    (cond
+        [nil? xs]
+            v
+        [not (cons? xs)]
+            (panic "Cannot fold over non-list value")
+        true
+            (f (car xs) (foldr f v (cdr xs)))))
+
+
 (defun (len xs)
     (if (nil? xs)
         0
     (if (cons? xs)
         (+ 1 (len (cdr xs)))
         (panic "Cannot take the length of a non-list value))))
+
+
+(defun (map xs f)
+    # applies a function f to all elements of a list xs
+    (cond
+        [nil? xs]
+            '()
+        [cons? xs]
+            (cons (f (car xs)) (map (cdr xs) f))
+        true
+            (panic "Cannot apply map to a non-list value")))
 
 
 (defun (max xs)
@@ -28,3 +66,8 @@
         (car xs)
         (max (cdr xs))))))
 
+
+(defun (range start finish step)
+    (if (>= start finish)
+        '()
+        (cons start (range (+ start step) finish step))))
