@@ -8,6 +8,11 @@ mod value;
 fn main() {
     /* Interface */
 
+    // changes default panic display behaviour
+    std::panic::set_hook(Box::new(|msg| {
+        eprintln!("Liszp - fatal: {}", msg)
+    }));
+
     let mut filename = None;
 
     for arg in std::env::args() {
