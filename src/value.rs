@@ -40,7 +40,8 @@ pub enum Value {
 
     Lambda {
         args: Vec<String>,
-        body: Rc<Value>
+        body: Rc<Value>,
+        name: Option<String>
     },
 
     Name(String),
@@ -154,7 +155,12 @@ impl std::fmt::Display for Value {
 
             Value::Integer(i) => format!("{}", i),
 
-            Value::Lambda {..} => "<lambda expression>".into(),
+            Value::Lambda { name, .. } => {
+                match name {
+                    Some(n) => format!("<function '{}'>", n),
+                    None    => "<function>".into()
+                }
+            },
 
             Value::Name(s) => format!("{}", s),
 
