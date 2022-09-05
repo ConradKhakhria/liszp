@@ -69,7 +69,17 @@ impl Evaluator {
         let value = self.eval(&args[1])?;
     
         if let Value::Name(name) = &**name {
-            self.env.insert(name.clone(), value.clone());
+            if let Value::Lambda { args, body, .. } = &*value {
+                let new_function = Value::Lambda {
+                    args: args.clone(),
+                    body: body.clone(),
+                    name: Some(name.clone())
+                };
+
+                self.env.insert(name.clone(), new_function.rc());
+            } else {
+                self.env.insert(name.clone(), value.clone());
+            }
         } else {
             return new_error!("Liszp: expected name in def expression").into();
         }
@@ -108,7 +118,8 @@ impl Evaluator {
                 let arg_names = Self::get_arg_names(args)?;
                 let lambda = Value::Lambda {
                     args: arg_names,
-                    body: body.clone()
+                    body: body.clone(),
+                    name: None
                 };
 
                 Ok(lambda.rc())
@@ -173,7 +184,7 @@ impl Evaluator {
                     "def"            => self.define_value(&args),
                     "equals?"        => builtin::values_are_equal(&args, self),
                     "eval"           => builtin::eval_quoted(&args, self),
-                    "float"          => builtin::value_is_float(&args, self),
+                    "float?"         => builtin::value_is_float(&args, self),
                     "if"             => builtin::if_expr(&args, self),
                     "int?"           => builtin::value_is_int(&args, self),
                     "list"           => builtin::make_list(&args, self),
@@ -214,8 +225,13 @@ impl Evaluator {
         let source = std::fs::read_to_string(filepath)
                         .expect(format!("Cannot open file '{}'", filename).as_str());
 
-        for expr in read::read(&source, &filename, stdlib)?.iter() {
-            let evaluated = self.eval(expr)?;
+        let read_exprs = match read::read(&source, &filename, stdlib) {
+            Ok(xs) => xs,
+            Err(e) => return e.add_filename(&filename).into()
+        };
+
+        for expr in read_exprs.iter() {
+            let evaluated = self.eval(expr).map_err(|e| e.add_filename(&filename))?;
 
             self.evaluated.push(evaluated);
         }
@@ -232,18 +248,22 @@ impl Evaluator {
 
         let evaluated_function = self.eval(&function)?;
 
-        let (arg_names, body) = match &*evaluated_function {
-            Value::Lambda { args, body } => (args, body),
-            _ => return new_error!("expected function, received '{}'", function).into()
-        };
+        match &*evaluated_function {
+            Value::Lambda { args, body, name } => {
+                let replaced_values = match self.add_args_to_env(&args, arg_values) {
+                    Ok(rvs) => rvs,
+                    Err(e) => return e.add_stack_trace_step(name.as_ref()).into()
+                };
 
-        let replaced_values = self.add_args_to_env(&arg_names, arg_values)?;
+                let result = self.eval(&body);
 
-        let result = self.eval(&body);
+                self.replace_old_values(&replaced_values);
+        
+                result.map_err(|e| e.add_stack_trace_step(name.as_ref()))
+            }
 
-        self.replace_old_values(&replaced_values);
-
-        result
+            _ => new_error!("expected function, received '{}'", function).into()
+        }
     }
 
 
