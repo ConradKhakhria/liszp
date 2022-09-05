@@ -83,13 +83,13 @@ pub fn run_repl() {
     let mut evaluator = Evaluator::new();
 
     if let Err(e) = evaluator.load_stdlib() {
-        e.println();
+        eprintln!("{}", e.display(false));
     }
 
     loop {
         match repl_iteration(&mut evaluator) {
             Ok(v) => println!("{}", v),
-            Err(e) => e.println()
+            Err(e) => eprintln!("{}", e.display(false))
         }
     }
 }
