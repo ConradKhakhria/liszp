@@ -30,12 +30,13 @@ fn main() {
             let mut evaluator = eval::Evaluator::new();
 
             if let Err(e) = evaluator.load_stdlib() {
-                e.println();
-                panic!("error in stdlib");
+                eprintln!("{}", e.display(false));
+                panic!("fatal error");
             }
 
             if let Err(e) = evaluator.eval_file(fname, false) {
-                e.println();
+                eprintln!("{}", e.display(false));
+                panic!("fatal error");
             }
         }
 
